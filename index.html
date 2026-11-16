@@ -69,7 +69,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0";
 const supa = createClient("https://khbcqvuaqmzxlmaayfla.supabase.co", "sb_publishable_N_Hr_LRVWHs-zN7NU5zV7A_aZuU6Fu1");
 const WA='556236367239';
 const normalizePhone = value => {
-  let digits = String(value || '').replace(/\\D/g,'');
+  let digits = String(value || '').replace(/\D/g,'');
   if (digits.startsWith('55')) digits = digits.slice(2);
   return '+55' + digits;
 };
