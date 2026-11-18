@@ -32,7 +32,7 @@ No Supabase, abra **Authentication → Sign In / Providers → Phone**:
 O frontend usa telefone brasileiro em E.164 (`+55...`) e senha. O envio real de SMS depende do provedor configurado no painel.
 
 ## Liberar o proprietário como administrador
-1. Cadastre a conta do proprietário pelo site usando o telefone empresarial **(62) 98574-3549**.
+1. Cadastre a conta do proprietário pelo site usando o telefone empresarial **(62) 98586-2147**.
 2. Confirme o SMS, se a confirmação estiver ativada, e entre na conta ao menos uma vez.
 3. No SQL Editor do Supabase, execute:
 
@@ -40,13 +40,13 @@ O frontend usa telefone brasileiro em E.164 (`+55...`) e senha. O envio real de 
 insert into private.admin_users (user_id)
 select id
 from auth.users
-where phone = '+5562985743549'
+where phone = '+5562985862147'
 on conflict (user_id) do nothing;
 ```
 
 4. Saia e entre novamente no site. O botão **Painel administrativo** será exibido para essa conta.
 
-**Estado verificado em 18/11/2026:** a tabela `private.admin_users` estava vazia e ainda não havia conta Auth com esse telefone. Portanto, o painel está implementado, mas o acesso do proprietário depende de concluir os passos acima. Nenhum usuário foi promovido automaticamente.
+**Estado verificado em 18/11/2026:** a tabela `private.admin_users` estava vazia e ainda não havia conta Auth com o telefone administrativo atualizado (+55 62 98586-2147). Portanto, o painel está implementado, mas o acesso do proprietário depende de concluir os passos acima. Nenhum usuário foi promovido automaticamente.
 
 ## Verificações e pendências
 - Projeto Supabase ativo e saudável.
