@@ -34,10 +34,47 @@ section{padding:86px 24px}.container{max-width:1320px;margin:auto}.section-top{d
 .float{position:fixed;right:20px;bottom:20px;z-index:35;background:#218451;color:white;padding:14px 17px;border-radius:30px;box-shadow:0 8px 25px #0003;font-size:11px;font-weight:700}
 @media(max-width:900px){.links{display:none}.category-grid{grid-template-columns:repeat(3,1fr)}.grid{grid-template-columns:repeat(2,1fr)}.country-layout{grid-template-columns:1fr}.country-list{display:grid;grid-template-columns:repeat(3,1fr)}.country-content{border-left:0;padding:20px 0 0;border-top:1px solid #ffffff24}.footer-inner{grid-template-columns:1fr 1fr}.member-layout{gap:25px}}
 @media(max-width:600px){.nav{padding:12px 15px}.iconbtn{display:none}.hero{min-height:600px;background-position:60% center}.hero-inner{padding:70px 20px}.hero h1{font-size:54px}.manifesto-inner{grid-template-columns:1fr;gap:17px;padding:22px}.section-top{display:block}.section-top p{margin-top:15px}.category-grid{grid-template-columns:repeat(2,1fr)}.category{min-height:120px;padding:14px}.category b{font-size:15px}.grid{gap:9px}.product-art{height:140px}.product-art span{font-size:48px}.product-body{padding:12px}.product h3{font-size:16px}.current{font-size:18px}.country-list{grid-template-columns:repeat(2,1fr)}.member-layout,.hours-grid{grid-template-columns:1fr}.member-form{padding:20px}.footer-inner{grid-template-columns:1fr}.float{right:12px;bottom:12px}.catalog-toolbar{align-items:stretch}.search{min-width:100%}section{padding:65px 17px}}
+
+/* Leitura, acessibilidade e áreas administrativas */
+body{font-size:16px;line-height:1.55}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #b18a45;outline-offset:3px}
+input,select{font-size:16px;min-height:46px}
+label{font-size:13px!important;letter-spacing:.2px!important;text-transform:none!important}
+.btn,.add,.checkout,.member-form button{font-size:14px;letter-spacing:.3px;text-transform:none;min-height:48px}
+.category small,.product-meta,.eyebrow{font-size:12px;letter-spacing:1px}
+.product p,.section-top p,.member-layout p,.hours p{font-size:15px}
+.catalog-disclaimer,.fineprint,.drawer-note{font-size:12px}
+.announcement{font-size:12px;letter-spacing:.6px}
+.iconbtn,.cartbtn{font-size:13px;min-height:44px}
+.customer-orders{margin-top:18px;max-height:280px;overflow:auto}
+.customer-orders h3{font:22px 'Playfair Display';margin:14px 0 8px}
+.customer-order,.admin-record,.admin-customer,.admin-product{border:1px solid var(--line);padding:13px;margin:9px 0;background:#fffdf8}
+.customer-order span{float:right;font-size:12px;color:#36543d;font-weight:700}
+.customer-order small,.customer-order p,.admin-record small,.admin-product small,.admin-customer small{display:block;font-size:12px;color:var(--muted);margin:6px 0}
+.admin-section{margin-top:24px;padding-top:18px;border-top:1px solid var(--line)}
+.admin-section h3{font:24px 'Playfair Display';margin:0 0 14px}
+.admin-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}
+.admin-stats>div{background:#eee9dc;padding:14px;min-width:0}
+.admin-stats small,.admin-stats strong{display:block}
+.admin-stats small{font-size:12px;color:#62645b}
+.admin-stats strong{font-size:22px;margin-top:5px;overflow-wrap:anywhere}
+.admin-record p{font-size:13px;margin:8px 0}
+.admin-record label{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.admin-record select{min-width:180px}
+.admin-product{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.admin-actions button,.admin-form button{border:0;background:var(--forest);color:white;padding:11px 15px;min-height:44px}
+.admin-actions .secondary{background:#777}
+.admin-form{background:#f5f2e9;padding:16px;margin-bottom:14px}
+.admin-form label{display:block;margin:10px 0}
+.admin-form input{width:100%;padding:10px;border:1px solid var(--line);background:white}
+.admin-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+@media(max-width:700px){.admin-stats{grid-template-columns:repeat(2,1fr)}.admin-form-grid{grid-template-columns:1fr}.admin-product{align-items:flex-start;flex-direction:column}.iconbtn{display:block!important;padding:9px 10px}.navright{gap:5px}.cartbtn{padding:10px}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{transition:none!important;animation:none!important}}
 </style>
 </head>
 <body>
-<div class="announcement">Empório Milão · Bons produtos, escolhas inteligentes · Goiânia, GO</div>
+<div class="announcement" id="announcementBar">Empório Milão · Bons produtos, escolhas inteligentes · Goiânia, GO</div>
 <header><div class="nav">
 <a class="logo" href="#top"><span class="seal">M</span><span class="logotype"><small>EMPÓRIO</small><b>MILÃO</b></span></a>
 <nav class="links"><a href="#colecao">Coleção</a><a href="#catalogo">Cardápio</a><a href="#origens">Vinhos por origem</a><a href="#horarios">Horários</a></nav>
@@ -61,13 +98,13 @@ section{padding:86px 24px}.container{max-width:1320px;margin:auto}.section-top{d
 <footer class="footer"><div class="footer-inner"><div><h3>EMPÓRIO MILÃO</h3><p>Uma experiência de compra que aproxima boas escolhas de bons momentos.</p></div><div><h3>Explore</h3><p><a href="#catalogo">Cardápio digital</a><br><a href="#origens">Vinhos por país</a><br><a href="#horarios">Horários de funcionamento</a></p></div><div><h3>Fale com a loja</h3><p>(62) 3636-7239<br><a href="https://www.instagram.com/emporiomilaoprimego/" target="_blank">Instagram @emporiomilaoprimego</a><br><a href="https://emporiomilaoprime.meucardapio.ai/" target="_blank">Cardápio oficial</a></p></div></div><div class="footer-bottom"><span>© Empório Milão · Goiânia, Goiás</span><span>Preços e disponibilidade sujeitos à confirmação pela loja.</span></div></footer>
 <a class="float" href="https://wa.me/556236367239?text=Ol%C3%A1%21%20Vim%20pelo%20site%20do%20Emp%C3%B3rio%20Mil%C3%A3o%20e%20gostaria%20de%20fazer%20um%20pedido." target="_blank">WhatsApp · Fazer pedido</a>
 <div class="cart-drawer" id="cartDrawer"><div class="shade" id="closeShade"></div><aside class="drawer"><div class="drawer-head"><h2>Sua sacola</h2><button class="close" id="closeCart">×</button></div><div class="cart-items" id="cartItems"></div><div class="cart-total"><label for="deliveryAddress" style="display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px">Endereço de entrega</label><input id="deliveryAddress" required placeholder="Rua, número, bairro e complemento" style="width:100%;padding:12px;border:1px solid var(--line);background:white"><label for="paymentMethod" style="display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px">Forma de pagamento</label><select id="paymentMethod" style="width:100%;padding:12px;border:1px solid var(--line);background:white"><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="cartao_entrega">Cartão na entrega</option></select><div class="total-row" style="margin-top:14px"><span>Total estimado</span><span id="cartTotal">R$ 0,00</span></div><button class="checkout" id="checkout">Salvar pedido e enviar ao WhatsApp</button><div class="drawer-note">O pedido será registrado no sistema. A loja confirmará disponibilidade, entrega e valor final antes do pagamento.</div></div></aside></div>
-<div class="modal" id="accountModal"><div class="modal-card"><button class="close" id="closeModal" style="position:absolute;right:16px;top:12px">×</button><div class="eyebrow">Área do cliente</div><h2>Bem-vindo ao Milão.</h2><p id="accountStatus">Entre com seu telefone e senha ou crie sua conta.</p><label for="loginPhone" style="display:block;font-size:10px;margin:12px 0 5px">WhatsApp com DDD</label><input id="loginPhone" autocomplete="tel" placeholder="(62) 9 0000-0000"><label for="loginPassword" style="display:block;font-size:10px;margin:12px 0 5px">Senha</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Sua senha"><button class="btn" id="loginBtn">Entrar</button><button class="btn" id="logoutBtn" style="background:#777;display:none">Sair da conta</button><button class="btn" id="adminOpenBtn" style="background:#9a7b47;display:none">Abrir painel administrativo</button><p class="fineprint">A conta funciona em qualquer dispositivo. A confirmação por SMS depende da configuração do provedor de telefone no Supabase.</p></div></div>
+<div class="modal" id="accountModal"><div class="modal-card"><button class="close" id="closeModal" style="position:absolute;right:16px;top:12px">×</button><div class="eyebrow">Área do cliente</div><h2>Bem-vindo ao Milão.</h2><p id="accountStatus">Entre com seu telefone e senha ou crie sua conta.</p><div id="customerOrders" class="customer-orders" aria-live="polite"></div><label for="loginPhone" style="display:block;font-size:10px;margin:12px 0 5px">WhatsApp com DDD</label><input id="loginPhone" autocomplete="tel" placeholder="(62) 9 0000-0000"><label for="loginPassword" style="display:block;font-size:10px;margin:12px 0 5px">Senha</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Sua senha"><button class="btn" id="loginBtn">Entrar</button><button class="btn" id="logoutBtn" style="background:#777;display:none">Sair da conta</button><button class="btn" id="adminOpenBtn" style="background:#9a7b47;display:none">Abrir painel administrativo</button><p class="fineprint">A conta funciona em qualquer dispositivo. A confirmação por SMS depende da configuração do provedor de telefone no Supabase.</p></div></div>
 <div class="modal" id="adminModal"><div class="modal-card" style="width:min(900px,100%);max-height:85vh;overflow:auto"><button class="close" id="closeAdmin" style="position:absolute;right:16px;top:12px">×</button><div class="eyebrow">Acesso restrito</div><h2>Painel do Empório</h2><div id="adminContent">Carregando dados...</div></div></div>
 <div class="toast" id="toast"></div>
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0";
 const supa = createClient("https://khbcqvuaqmzxlmaayfla.supabase.co", "sb_publishable_N_Hr_LRVWHs-zN7NU5zV7A_aZuU6Fu1");
-const WA='556236367239';
+let WA='556236367239';
 const normalizePhone = value => {
   let digits = String(value || '').replace(/\D/g,'');
   if (digits.startsWith('55')) digits = digits.slice(2);
@@ -83,27 +120,21 @@ async function loadProducts(){
 }
 async function refreshAuth(){
   const {data}=await supa.auth.getSession();
-  currentUser=data.session?.user || null;
-  isAdmin=false;
-  if(currentUser){
-    const {data:adminData,error}=await supa.rpc('is_admin');
-    isAdmin=!error && adminData===true;
-  }
+  currentUser=data.session?.user||null; isAdmin=false;
+  if(currentUser){const {data:adminData,error}=await supa.rpc('is_admin');isAdmin=!error&&adminData===true;}
   document.getElementById('logoutBtn').style.display=currentUser?'block':'none';
   document.getElementById('adminOpenBtn').style.display=isAdmin?'block':'none';
-  if(currentUser){
-    const {data:profile}=await supa.from('profiles').select('full_name,phone').eq('id',currentUser.id).maybeSingle();
-    document.getElementById('accountStatus').textContent='Conectado: '+(profile?.full_name || currentUser.phone || 'cliente')+'. Seus pedidos ficam vinculados à sua conta.';
-    if(profile?.full_name) document.getElementById('fullName').value=profile.full_name;
-    if(profile?.phone) document.getElementById('phone').value=profile.phone;
-  }else{
-    document.getElementById('accountStatus').textContent='Entre com seu telefone e senha ou crie sua conta.';
-  }
-}
-async function initSupabase(){
-  supa.auth.onAuthStateChange(()=>{setTimeout(refreshAuth,0);});
-  await loadProducts();
-  await refreshAuth();
+  const box=document.getElementById('customerOrders');
+  if(!currentUser){document.getElementById('accountStatus').textContent='Entre com seu telefone e senha ou crie sua conta.';box.innerHTML='';return;}
+  const {data:profile}=await supa.from('profiles').select('full_name,phone').eq('id',currentUser.id).maybeSingle();
+  document.getElementById('accountStatus').textContent='Olá, '+(profile?.full_name||currentUser.phone||'cliente')+'. Aqui você acompanha seus pedidos.';
+  if(profile?.full_name)document.getElementById('fullName').value=profile.full_name;
+  if(profile?.phone)document.getElementById('phone').value=profile.phone;
+  const {data:orders,error}=await supa.from('orders').select('id,status,total_amount,created_at,order_items(product_name,quantity)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
+  if(error){box.textContent='Não foi possível carregar seus pedidos agora.';return;}
+  if(!orders?.length){box.innerHTML='<h3>Meus pedidos</h3><p>Você ainda não fez nenhum pedido.</p>';return;}
+  const labels={received:'Recebido',confirmed:'Confirmado',preparing:'Em preparação',out_for_delivery:'Saiu para entrega',completed:'Concluído',cancelled:'Cancelado'};
+  box.innerHTML='<h3>Meus pedidos</h3>'+orders.map(o=>'<article class="customer-order"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+'</b><span>'+escapeHtml(labels[o.status]||o.status)+'</span><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+brl(Number(o.total_amount))+'</small><p>'+((o.order_items||[]).map(i=>escapeHtml(i.quantity+'x '+i.product_name)).join(' · '))+'</p></article>').join('');
 }
 
 let products=[{"id": "suco-honest-acerola", "name": "Suco Honest Acerola 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Bebida de fruta para servir bem gelada."}, {"id": "suco-honest-maracuja", "name": "Suco Honest Maracujá 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Sabor tropical e refrescante."}, {"id": "suco-honest-frutas-vermelhas", "name": "Suco Honest Frutas Vermelhas 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Combinação frutada para diferentes momentos."}, {"id": "suco-honest-morango-limao", "name": "Suco Honest Morango com Limão 900 ml", "category": "Sucos", "country": "Brasil", "price": 13.9, "oldPrice": null, "description": "Mistura de morango e limão em 900 ml."}, {"id": "suco-honest-morango-maracuja", "name": "Suco Honest Morango com Maracujá", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Combinação de frutas com perfil tropical."}, {"id": "suco-prats-uva", "name": "Suco Prats Uva Integral 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Suco integral de uva."}, {"id": "suco-prats-laranja", "name": "Suco Prats Laranja Integral 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Suco integral de laranja."}, {"id": "suco-casa-madeira", "name": "Suco Tinto de Uva Casa Madeira 1 L", "category": "Sucos", "country": "Brasil", "price": 29.99, "oldPrice": null, "description": "Suco tinto de uva em embalagem de 1 litro."}, {"id": "suco-jumju", "name": "Suco de Uva Jumju 238 ml", "category": "Sucos", "country": "Coreia do Sul", "price": 3.99, "oldPrice": null, "description": "Bebida de uva verde com pedaços de fruta. Servir bem gelada."}];const categories=[
@@ -179,21 +210,48 @@ document.getElementById('accountBtn').onclick=async()=>{await refreshAuth();docu
 document.getElementById('closeModal').onclick=()=>document.getElementById('accountModal').classList.remove('open');
 document.getElementById('accountModal').onclick=e=>{if(e.target.id==='accountModal')e.currentTarget.classList.remove('open');};
 document.getElementById('editAccount').onclick=()=>{document.getElementById('accountModal').classList.remove('open');document.getElementById('membership').scrollIntoView({behavior:'smooth'});};
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function slugify(v){return String(v||'produto').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50)||'produto';}
+async function loadStoreSettings(){
+ const {data,error}=await supa.from('store_settings').select('store_name,announcement,whatsapp').eq('id',true).maybeSingle();
+ if(error||!data)return; WA=data.whatsapp||WA;
+ document.getElementById('announcementBar').textContent=data.announcement||'Empório Milão · Goiânia, GO';
+ document.title=(data.store_name||'Empório Milão')+' — Curadoria para bons momentos';
+}
 async function openAdminPanel(){
-  if(!isAdmin){toast('Acesso administrativo não autorizado.');return;}
-  const modal=document.getElementById('adminModal');const content=document.getElementById('adminContent');
-  modal.classList.add('open');content.textContent='Carregando dados...';
-  const [ordersResult,profilesResult]=await Promise.all([
-    supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,status,total_amount,created_at,order_items(product_name,quantity,unit_price)').order('created_at',{ascending:false}).limit(100),
-    supa.from('profiles').select('id,full_name,phone,created_at').order('created_at',{ascending:false}).limit(100)
-  ]);
-  if(ordersResult.error || profilesResult.error){content.textContent='Não foi possível carregar os dados administrativos.';return;}
-  const money=v=>brl(Number(v||0));
-  const orderRows=(ordersResult.data||[]).map(o=>'<div style="border:1px solid var(--line);padding:12px;margin:10px 0"><b>Pedido '+o.id.slice(0,8)+'</b> · '+money(o.total_amount)+'<br><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+o.customer_name+' · '+o.customer_phone+'</small><p style="font-size:12px">'+o.delivery_address+' · '+paymentLabels[o.payment_method]+'</p><p style="font-size:12px">'+(o.order_items||[]).map(i=>i.quantity+'x '+i.product_name).join(' · ')+'</p><label>Status: <select data-status="'+o.id+'" style="padding:7px"><option value="received">Recebido</option><option value="confirmed">Confirmado</option><option value="preparing">Preparando</option><option value="out_for_delivery">Saiu para entrega</option><option value="completed">Concluído</option><option value="cancelled">Cancelado</option></select></label></div>').join('') || '<p>Nenhum pedido registrado.</p>';
-  const customerRows=(profilesResult.data||[]).map(p=>'<div style="padding:8px;border-bottom:1px solid var(--line)">'+(p.full_name||'Cliente')+' · '+(p.phone||'Sem telefone')+' <small>· '+new Date(p.created_at).toLocaleDateString('pt-BR')+'</small></div>').join('') || '<p>Nenhum cadastro.</p>';
-  const revenue=(ordersResult.data||[]).filter(o=>o.status!=='cancelled').reduce((s,o)=>s+Number(o.total_amount),0);
-  content.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0"><div style="background:#eee9dc;padding:12px"><small>Pedidos</small><h2>'+(ordersResult.data||[]).length+'</h2></div><div style="background:#eee9dc;padding:12px"><small>Clientes</small><h2>'+(profilesResult.data||[]).length+'</h2></div><div style="background:#eee9dc;padding:12px"><small>Total de pedidos ativos</small><h2>'+money(revenue)+'</h2></div></div><h3>Pedidos recentes</h3>'+orderRows+'<h3>Clientes cadastrados</h3>'+customerRows;
-  content.querySelectorAll('[data-status]').forEach(sel=>{sel.value=(ordersResult.data||[]).find(o=>o.id===sel.dataset.status)?.status||'received';sel.onchange=async()=>{const {error}=await supa.from('orders').update({status:sel.value}).eq('id',sel.dataset.status);toast(error?'Falha ao atualizar status.':'Status do pedido atualizado.');};});
+ if(!isAdmin){toast('Acesso administrativo não autorizado.');return;}
+ const modal=document.getElementById('adminModal'),content=document.getElementById('adminContent');modal.classList.add('open');content.textContent='Carregando painel...';
+ const [or,pr,cr,sr]=await Promise.all([
+  supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,status,total_amount,created_at,order_items(product_name,quantity)').order('created_at',{ascending:false}).limit(100),
+  supa.from('profiles').select('id,full_name,phone,created_at').order('created_at',{ascending:false}).limit(100),
+  supa.from('products').select('id,name,category,country,price,description,active').order('name'),
+  supa.from('store_settings').select('store_name,announcement,whatsapp,opening_hours').eq('id',true).maybeSingle()
+ ]);
+ if(or.error||pr.error||cr.error||sr.error){content.textContent='Falha ao carregar os dados. Verifique as permissões administrativas.';return;}
+ const orders=or.data||[],profiles=pr.data||[],productsList=cr.data||[],settings=sr.data||{};
+ const statuses={received:'Recebido',confirmed:'Confirmado',preparing:'Em preparação',out_for_delivery:'Saiu para entrega',completed:'Concluído',cancelled:'Cancelado'};
+ const orderHtml=orders.map(o=>'<article class="admin-record"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+' · '+brl(Number(o.total_amount))+'</b><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+escapeHtml(o.customer_name)+' · '+escapeHtml(o.customer_phone)+'</small><p>'+escapeHtml(o.delivery_address)+' · '+escapeHtml(paymentLabels[o.payment_method]||o.payment_method)+'</p><p>'+((o.order_items||[]).map(i=>escapeHtml(i.quantity+'x '+i.product_name)).join(' · '))+'</p><label>Status<select data-status="'+escapeHtml(o.id)+'">'+Object.entries(statuses).map(([v,l])=>'<option value="'+v+'" '+(o.status===v?'selected':'')+'>'+l+'</option>').join('')+'</select></label></article>').join('')||'<p>Nenhum pedido.</p>';
+ const productHtml=productsList.map(p=>'<article class="admin-product"><div><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.category)+' · '+brl(Number(p.price))+' · '+(p.active?'Publicado':'Oculto')+'</small></div><div class="admin-actions"><button type="button" data-edit="'+escapeHtml(p.id)+'">Editar</button><button type="button" data-toggle="'+escapeHtml(p.id)+'" data-active="'+p.active+'">'+(p.active?'Ocultar':'Publicar')+'</button></div></article>').join('');
+ const customerHtml=profiles.map(p=>'<div class="admin-customer"><b>'+escapeHtml(p.full_name||'Cliente')+'</b><span>'+escapeHtml(p.phone||'Sem telefone')+'</span><small>'+new Date(p.created_at).toLocaleDateString('pt-BR')+'</small></div>').join('')||'<p>Nenhum cadastro.</p>';
+ const total=orders.filter(o=>o.status!=='cancelled').reduce((v,o)=>v+Number(o.total_amount),0);
+ content.innerHTML='<div class="admin-stats"><div><small>Pedidos</small><strong>'+orders.length+'</strong></div><div><small>Clientes</small><strong>'+profiles.length+'</strong></div><div><small>Vendas não canceladas</small><strong>'+brl(total)+'</strong></div><div><small>Produtos</small><strong>'+productsList.length+'</strong></div></div>'+
+ '<section class="admin-section"><h3>Pedidos e entregas</h3>'+orderHtml+'</section>'+
+ '<section class="admin-section"><h3>Gerenciar produtos</h3><form id="productForm" class="admin-form"><input id="editProductId" type="hidden"><label>Nome<input id="pName" required maxlength="120"></label><div class="admin-form-grid"><label>Categoria<input id="pCategory" required maxlength="60"></label><label>País<input id="pCountry" maxlength="60"></label><label>Preço (R$)<input id="pPrice" type="number" min="0.01" step="0.01" required></label></div><label>Descrição<input id="pDescription" maxlength="240"></label><div class="admin-actions"><button type="submit">Salvar produto</button><button type="button" class="secondary" id="clearProduct">Limpar</button></div></form>'+productHtml+'</section>'+
+ '<section class="admin-section"><h3>Clientes cadastrados</h3>'+customerHtml+'</section>'+
+ '<section class="admin-section"><h3>Configurações da loja</h3><form id="settingsForm" class="admin-form"><label>Nome da loja<input id="sName" required value="'+escapeHtml(settings.store_name||'Empório Milão')+'"></label><label>Mensagem do topo<input id="sAnnouncement" required value="'+escapeHtml(settings.announcement||'Empório Milão · Goiânia, GO')+'"></label><label>WhatsApp (DDI + DDD + número)<input id="sWhatsapp" required inputmode="numeric" pattern="[0-9]{10,15}" value="'+escapeHtml(settings.whatsapp||WA)+'"></label><label>Horários de funcionamento<input id="sHours" value="'+escapeHtml(settings.opening_hours||'')+'"></label><button type="submit">Salvar configurações</button></form></section>';
+ const clear=()=>{document.getElementById('productForm').reset();document.getElementById('editProductId').value='';};
+ document.getElementById('clearProduct').onclick=clear;
+ document.getElementById('productForm').onsubmit=async e=>{
+  e.preventDefault();const id=document.getElementById('editProductId').value,name=document.getElementById('pName').value.trim();
+  const payload={name,category:document.getElementById('pCategory').value.trim(),country:document.getElementById('pCountry').value.trim()||null,price:Number(document.getElementById('pPrice').value),description:document.getElementById('pDescription').value.trim(),active:true,updated_at:new Date().toISOString()};
+  if(!payload.name||!payload.category||!Number.isFinite(payload.price)||payload.price<=0){toast('Confira os dados do produto.');return;}
+  const result=id?await supa.from('products').update(payload).eq('id',id):await supa.from('products').insert({...payload,id:slugify(name)+'-'+Date.now().toString(36)});
+  if(result.error){toast('Erro ao salvar produto: '+result.error.message);return;}toast('Produto salvo.');await loadProducts();await openAdminPanel();
+ };
+ content.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>{const p=productsList.find(x=>x.id===btn.dataset.edit);if(!p)return;document.getElementById('editProductId').value=p.id;document.getElementById('pName').value=p.name;document.getElementById('pCategory').value=p.category;document.getElementById('pCountry').value=p.country||'';document.getElementById('pPrice').value=p.price;document.getElementById('pDescription').value=p.description||'';document.getElementById('productForm').scrollIntoView({behavior:'smooth',block:'center'});});
+ content.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{const {error}=await supa.from('products').update({active:btn.dataset.active!=='true',updated_at:new Date().toISOString()}).eq('id',btn.dataset.toggle);if(error){toast('Não foi possível alterar o produto.');return;}toast('Catálogo atualizado.');await loadProducts();await openAdminPanel();});
+ content.querySelectorAll('[data-status]').forEach(sel=>sel.onchange=async()=>{const {error}=await supa.from('orders').update({status:sel.value,updated_at:new Date().toISOString()}).eq('id',sel.dataset.status);toast(error?'Falha ao atualizar pedido.':'Pedido atualizado.');});
+ document.getElementById('settingsForm').onsubmit=async e=>{e.preventDefault();const whatsapp=document.getElementById('sWhatsapp').value.replace(/\D/g,'');if(whatsapp.length<10||whatsapp.length>15){toast('Confira o WhatsApp com DDI e DDD.');return;}const payload={store_name:document.getElementById('sName').value.trim(),announcement:document.getElementById('sAnnouncement').value.trim(),whatsapp,opening_hours:document.getElementById('sHours').value.trim(),updated_at:new Date().toISOString()};const {error}=await supa.from('store_settings').update(payload).eq('id',true);if(error){toast('Não foi possível salvar as configurações.');return;}WA=whatsapp;document.getElementById('announcementBar').textContent=payload.announcement;document.title=payload.store_name+' — Curadoria para bons momentos';toast('Configurações salvas.');};
 }
 document.getElementById('adminOpenBtn').onclick=openAdminPanel;
 document.getElementById('closeAdmin').onclick=()=>document.getElementById('adminModal').classList.remove('open');
