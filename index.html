@@ -49,7 +49,7 @@ label{font-size:13px!important;letter-spacing:.2px!important;text-transform:none
 .catalog-disclaimer,.fineprint,.drawer-note{font-size:12px}
 .announcement{font-size:12px;letter-spacing:.6px}
 .iconbtn,.cartbtn{font-size:13px;min-height:44px}
-.customer-orders{margin-top:18px;max-height:280px;overflow:auto}
+.customer-orders{margin-top:18px;max-height:280px;overflow:auto}.profile-avatar{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#e6e0d3;color:#27372d;font:28px "Playfair Display";margin:12px 0}.profile-avatar img{width:100%;height:100%;object-fit:cover}.account-settings{border-top:1px solid var(--line);margin-top:16px;padding-top:12px}.account-settings h3{font:22px "Playfair Display";margin:12px 0}.account-settings label{display:block;margin:10px 0 5px}.account-settings input{width:100%;padding:11px;border:1px solid var(--line);background:white}.account-settings form{margin:12px 0;padding-bottom:12px;border-bottom:1px solid var(--line)}
 .customer-orders h3{font:22px 'Playfair Display';margin:14px 0 8px}
 .customer-order,.admin-record,.admin-customer,.admin-product{border:1px solid var(--line);padding:13px;margin:9px 0;background:#fffdf8}
 .customer-order span{float:right;font-size:12px;color:#36543d;font-weight:700}
@@ -102,12 +102,12 @@ label{font-size:13px!important;letter-spacing:.2px!important;text-transform:none
 <footer class="footer"><div class="footer-inner"><div><h3>EMPÓRIO MILÃO</h3><p>Uma experiência de compra que aproxima boas escolhas de bons momentos.</p></div><div><h3>Explore</h3><p><a href="#catalogo">Cardápio digital</a><br><a href="#origens">Vinhos por país</a><br><a href="#horarios">Horários de funcionamento</a></p></div><div><h3>Fale com a loja</h3><p>(62) 3636-7239<br><a href="https://www.instagram.com/emporiomilaoprimego/" target="_blank">Instagram @emporiomilaoprimego</a><br><a href="https://emporiomilaoprime.meucardapio.ai/" target="_blank">Cardápio oficial</a></p></div></div><div class="footer-bottom"><span>© Empório Milão · Goiânia, Goiás</span><span>Preços e disponibilidade sujeitos à confirmação pela loja.</span></div></footer>
 <a class="float" href="https://wa.me/556236367239?text=Ol%C3%A1%21%20Vim%20pelo%20site%20do%20Emp%C3%B3rio%20Mil%C3%A3o%20e%20gostaria%20de%20fazer%20um%20pedido." target="_blank">WhatsApp · Fazer pedido</a>
 <div class="cart-drawer" id="cartDrawer"><div class="shade" id="closeShade"></div><aside class="drawer"><div class="drawer-head"><h2>Sua sacola</h2><button class="close" id="closeCart">×</button></div><div class="cart-items" id="cartItems"></div><div class="cart-total"><label for="customerPhone" style="display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px">WhatsApp para contato</label><input id="customerPhone" type="tel" required autocomplete="tel" placeholder="(62) 9 0000-0000" style="width:100%;padding:12px;border:1px solid var(--line);background:white"><label for="deliveryAddress" style="display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px">Endereço de entrega</label><input id="deliveryAddress" required placeholder="Rua, número, bairro e complemento" style="width:100%;padding:12px;border:1px solid var(--line);background:white"><label for="paymentMethod" style="display:block;font-size:10px;letter-spacing:1px;text-transform:uppercase;margin:12px 0 6px">Forma de pagamento</label><select id="paymentMethod" style="width:100%;padding:12px;border:1px solid var(--line);background:white"><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="cartao_entrega">Cartão na entrega</option></select><div class="total-row" style="margin-top:14px"><span>Total estimado</span><span id="cartTotal">R$ 0,00</span></div><button class="checkout" id="checkout">Salvar pedido e enviar ao WhatsApp</button><div class="drawer-note">O pedido será registrado no sistema. A loja confirmará disponibilidade, entrega e valor final antes do pagamento.</div></div></aside></div>
-<div class="modal" id="accountModal"><div class="modal-card"><button class="close" id="closeModal" style="position:absolute;right:16px;top:12px">×</button><div class="eyebrow">Área do cliente</div><h2>Bem-vindo ao Milão.</h2><p id="accountStatus">Entre com seu e-mail e senha ou crie sua conta.</p><div id="customerOrders" class="customer-orders" aria-live="polite"></div><label for="loginEmail" style="display:block;font-size:10px;margin:12px 0 5px">E-mail</label><input id="loginEmail" type="email" autocomplete="email" placeholder="seuemail@exemplo.com"><label for="loginPassword" style="display:block;font-size:10px;margin:12px 0 5px">Senha</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Sua senha"><button class="btn" id="loginBtn">Entrar</button><button class="btn" id="logoutBtn" style="background:#777;display:none">Sair da conta</button><button class="btn" id="adminOpenBtn" style="background:#9a7b47;display:none">Abrir painel administrativo</button><p class="fineprint">Acesse sua conta com o e-mail e a senha cadastrados.</p></div></div>
+<div class="modal" id="accountModal"><div class="modal-card"><button class="close" id="closeModal" style="position:absolute;right:16px;top:12px">×</button><div class="eyebrow">Área do cliente</div><h2>Minha conta</h2><div id="accountStatus">Entre com seu e-mail e senha ou crie sua conta.</div><div id="accountLogin"><label for="loginEmail">E-mail</label><input id="loginEmail" type="email" autocomplete="email" placeholder="seuemail@exemplo.com"><label for="loginPassword">Senha</label><input id="loginPassword" type="password" autocomplete="current-password" placeholder="Sua senha"><button class="btn" id="loginBtn">Entrar</button><p class="fineprint">Ainda não tem conta? Use o formulário de cadastro na página inicial.</p></div><div id="accountSigned" style="display:none"><div id="accountAvatar" class="profile-avatar">M</div><button class="btn" id="settingsToggleBtn" type="button">Configurações da conta</button><div id="accountSettings" class="account-settings" style="display:none"><h3>Dados pessoais</h3><form id="profileForm"><label for="profileName">Nome completo</label><input id="profileName" required minlength="2" autocomplete="name"><label for="profilePhone">WhatsApp</label><input id="profilePhone" type="tel" autocomplete="tel" placeholder="(62) 9 0000-0000"><label for="profileAddress">Endereço de entrega padrão</label><input id="profileAddress" placeholder="Rua, número, bairro e complemento"><label for="profileEmail">E-mail da conta</label><input id="profileEmail" type="email" disabled><button class="btn" type="submit">Salvar dados pessoais</button></form><form id="avatarForm"><label for="profileAvatarFile">Foto de perfil (JPG, PNG ou WEBP; até 2 MB)</label><input id="profileAvatarFile" type="file" accept="image/png,image/jpeg,image/webp"><button class="btn" type="submit">Atualizar foto</button></form><form id="passwordForm"><h3>Alterar senha</h3><label for="newPassword">Nova senha (mínimo 8 caracteres)</label><input id="newPassword" type="password" minlength="8" autocomplete="new-password" required><button class="btn" type="submit">Atualizar senha</button></form></div><div id="customerOrders" class="customer-orders" aria-live="polite"></div><button class="btn" id="adminOpenBtn" style="background:#9a7b47;display:none">Abrir painel administrativo</button><button class="btn" id="logoutBtn" style="background:#777">Sair da conta</button></div><p class="fineprint">Sua sacola e seus pedidos ficam associados à sua conta.</p></div></div>
 <div class="modal" id="adminModal"><div class="modal-card" style="width:min(900px,100%);max-height:85vh;overflow:auto"><button class="close" id="closeAdmin" style="position:absolute;right:16px;top:12px">×</button><div class="eyebrow">Acesso restrito</div><h2>Painel do Empório</h2><div id="adminContent">Carregando dados...</div></div></div>
 <div class="toast" id="toast"></div>
 <script type="module">
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0";
-const supa = createClient("https://khbcqvuaqmzxlmaayfla.supabase.co", "sb_publishable_N_Hr_LRVWHs-zN7NU5zV7A_aZuU6Fu1");
+const supa = createClient("https://khbcqvuaqmzxlmaayfla.supabase.co", "sb_publishable_N_Hr_LRVWHs-zN7NU5zV7A_aZuU6Fu1", { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 let WA='556236367239';
 const normalizePhone = value => {
   let digits = String(value || '').replace(/\D/g,'');
@@ -122,30 +122,78 @@ async function loadProducts(){
   if(error){console.error('Falha ao carregar produtos:',error);toast('Não foi possível atualizar o catálogo.');return;}
   if(data && data.length){products=data.map(p=>({...p,price:Number(p.price),oldPrice:null}));renderFilters();renderProducts();}
 }
-async function refreshAuth(){
-  const {data}=await supa.auth.getSession();
-  currentUser=data.session?.user||null; isAdmin=false;
-  if(currentUser){const {data:adminData,error}=await supa.rpc('is_admin');isAdmin=!error&&adminData===true;}
-  document.getElementById('logoutBtn').style.display=currentUser?'block':'none';
-  document.getElementById('adminOpenBtn').style.display=isAdmin?'block':'none';
-  const box=document.getElementById('customerOrders');
-  if(!currentUser){document.getElementById('accountStatus').textContent='Entre com seu e-mail e senha ou crie sua conta.';box.innerHTML='';return;}
-  const {data:profile}=await supa.from('profiles').select('full_name,email,phone').eq('id',currentUser.id).maybeSingle();
-  document.getElementById('accountStatus').textContent='Olá, '+(profile?.full_name||currentUser.email||'cliente')+'. Aqui você acompanha seus pedidos.';
-  if(profile?.full_name)document.getElementById('fullName').value=profile.full_name;
-  if(profile?.email)document.getElementById('email').value=profile.email;
-  const {data:orders,error}=await supa.from('orders').select('id,status,total_amount,created_at,order_items(product_name,quantity)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
-  if(error){box.textContent='Não foi possível carregar seus pedidos agora.';return;}
-  if(!orders?.length){box.innerHTML='<h3>Meus pedidos</h3><p>Você ainda não fez nenhum pedido.</p>';return;}
-  const labels={received:'Recebido',confirmed:'Confirmado',preparing:'Em preparação',out_for_delivery:'Saiu para entrega',completed:'Concluído',cancelled:'Cancelado'};
-  box.innerHTML='<h3>Meus pedidos</h3>'+orders.map(o=>'<article class="customer-order"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+'</b><span>'+escapeHtml(labels[o.status]||o.status)+'</span><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+brl(Number(o.total_amount))+'</small><p>'+((o.order_items||[]).map(i=>escapeHtml(i.quantity+'x '+i.product_name)).join(' · '))+'</p></article>').join('');
+async function loadCartForUser(user){
+  cartOwnerId=user?.id||null;
+  const localKey=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';
+  let cached={};try{cached=JSON.parse(localStorage.getItem(localKey)||'{}')||{};}catch(_){}
+  if(!user){cart=cached;saveCart(false);return;}
+  const {data,error}=await supa.from('customer_carts').select('items').eq('user_id',user.id).maybeSingle();
+  if(error){console.warn('Carrinho remoto indisponível:',error);cart=cached;saveCart(false);return;}
+  if(data?.items && typeof data.items==='object'){cart=data.items;localStorage.setItem(localKey,JSON.stringify(cart));}
+  else {
+    cart=cached;
+    const guest=(()=>{try{return JSON.parse(localStorage.getItem('milao_cart_guest')||'{}')||{};}catch(_){return {};}})();
+    if(!Object.keys(cart).length && Object.keys(guest).length)cart=guest;
+    await persistCart();
+  }
+  saveCart(false);
 }
+async function persistCart(){
+  const key=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';
+  try{localStorage.setItem(key,JSON.stringify(cart));}catch(e){console.warn('Não foi possível salvar a sacola localmente.',e);}
+  if(cartOwnerId){
+    const {error}=await supa.from('customer_carts').upsert({user_id:cartOwnerId,items:cart,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    if(error)console.warn('Não foi possível sincronizar a sacola:',error);
+  }
+}
+async function refreshAuth(){
+  const {data:{session}}=await supa.auth.getSession();
+  const nextUser=session?.user||null;
+  const changed=currentUser?.id!==nextUser?.id;
+  currentUser=nextUser;isAdmin=false;currentProfile=null;
+  if(currentUser){
+    const {data:adminData,error:adminError}=await supa.rpc('is_admin');
+    isAdmin=!adminError && adminData===true;
+    if(adminError)console.error('Falha ao verificar permissão ADM:',adminError);
+    const {data:profile,error:profileError}=await supa.from('profiles').select('full_name,email,phone,avatar_url,delivery_address').eq('id',currentUser.id).maybeSingle();
+    if(!profileError)currentProfile=profile||{};
+    const name=currentProfile?.full_name||currentUser.user_metadata?.full_name||currentUser.email||'cliente';
+    document.getElementById('accountStatus').textContent='Olá, '+name+'. Seus dados e pedidos estão vinculados a esta conta.';
+    document.getElementById('accountLogin').style.display='none';
+    document.getElementById('accountSigned').style.display='block';
+    document.getElementById('profileName').value=currentProfile?.full_name||currentUser.user_metadata?.full_name||'';
+    document.getElementById('profilePhone').value=currentProfile?.phone||'';
+    document.getElementById('profileAddress').value=currentProfile?.delivery_address||'';
+    document.getElementById('profileEmail').value=currentUser.email||'';
+    const avatar=document.getElementById('accountAvatar');
+    avatar.innerHTML=currentProfile?.avatar_url?'<img src="'+escapeHtml(currentProfile.avatar_url)+'" alt="Foto de perfil">':escapeHtml((name.trim()[0]||'M').toUpperCase());
+    document.getElementById('logoutBtn').style.display='block';
+    document.getElementById('adminOpenBtn').style.display=isAdmin?'block':'none';
+    const {data:orders,error:ordersError}=await supa.from('orders').select('id,status,total_amount,created_at,order_items(product_name,quantity)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
+    const box=document.getElementById('customerOrders');
+    if(ordersError){box.textContent='Não foi possível carregar seus pedidos agora.';}
+    else if(!orders?.length){box.innerHTML='<h3>Meus pedidos</h3><p>Você ainda não fez nenhum pedido.</p>';}
+    else{
+      const labels={received:'Recebido',confirmed:'Confirmado',preparing:'Em preparação',out_for_delivery:'Saiu para entrega',completed:'Concluído',cancelled:'Cancelado'};
+      box.innerHTML='<h3>Meus pedidos</h3>'+orders.map(o=>'<article class="customer-order"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+'</b><span>'+escapeHtml(labels[o.status]||o.status)+'</span><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+brl(Number(o.total_amount))+'</small><p>'+((o.order_items||[]).map(i=>escapeHtml(i.quantity+'x '+i.product_name)).join(' · '))+'</p></article>').join('');
+    }
+    if(changed)await loadCartForUser(currentUser);
+  }else{
+    document.getElementById('accountStatus').textContent='Entre com seu e-mail e senha ou crie sua conta.';
+    document.getElementById('accountLogin').style.display='block';
+    document.getElementById('accountSigned').style.display='none';
+    document.getElementById('customerOrders').innerHTML='';
+    document.getElementById('adminOpenBtn').style.display='none';
+    if(changed)await loadCartForUser(null);
+  }
+}
+
 
 let products=[{"id": "suco-honest-acerola", "name": "Suco Honest Acerola 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Bebida de fruta para servir bem gelada."}, {"id": "suco-honest-maracuja", "name": "Suco Honest Maracujá 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Sabor tropical e refrescante."}, {"id": "suco-honest-frutas-vermelhas", "name": "Suco Honest Frutas Vermelhas 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Combinação frutada para diferentes momentos."}, {"id": "suco-honest-morango-limao", "name": "Suco Honest Morango com Limão 900 ml", "category": "Sucos", "country": "Brasil", "price": 13.9, "oldPrice": null, "description": "Mistura de morango e limão em 900 ml."}, {"id": "suco-honest-morango-maracuja", "name": "Suco Honest Morango com Maracujá", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Combinação de frutas com perfil tropical."}, {"id": "suco-prats-uva", "name": "Suco Prats Uva Integral 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Suco integral de uva."}, {"id": "suco-prats-laranja", "name": "Suco Prats Laranja Integral 900 ml", "category": "Sucos", "country": "Brasil", "price": 19.99, "oldPrice": null, "description": "Suco integral de laranja."}, {"id": "suco-casa-madeira", "name": "Suco Tinto de Uva Casa Madeira 1 L", "category": "Sucos", "country": "Brasil", "price": 29.99, "oldPrice": null, "description": "Suco tinto de uva em embalagem de 1 litro."}, {"id": "suco-jumju", "name": "Suco de Uva Jumju 238 ml", "category": "Sucos", "country": "Coreia do Sul", "price": 3.99, "oldPrice": null, "description": "Bebida de uva verde com pedaços de fruta. Servir bem gelada."}];const categories=[
  ['Vinhos','🍷','Vinhos de todas as origens'],['Destilados','🥃','Destilados e licores'],['Whiskys','🥃','Scotch, bourbon e mais'],['Vinhos premium','✦','Rótulos especiais'],['Tintos','🍷','Vinhos tintos'],['Brancos','🥂','Vinhos brancos'],['Rosés','🌸','Vinhos rosés'],['Espumantes','🍾','Brindes e celebrações'],['Carnes','🥩','Cortes especiais'],['Utensílios','♧','Acessórios e taças'],['Refrigerantes','🥤','Bebidas sem álcool'],['Sucos','🍇','Sucos e bebidas de fruta'],['Frios','🧀','Frios e charcutaria'],['Azeites','🫒','Azeites e conservas'],['Petiscos','🥨','Para compartilhar'],['Queijos','🧀','Queijos especiais'],['Cervejas','🍺','Cervejas e especiais'],['Gourmet & outros','✧','Outras descobertas']
 ];
 const countries=[['Argentina','Malbec, Bonarda e Cabernet'],['Brasil','Espumantes, Merlot e castas nacionais'],['Chile','Cabernet Sauvignon, Carménère e Sauvignon Blanc'],['França','Bordeaux, Borgonha, Rhône e Champagne'],['Itália','Sangiovese, Nebbiolo, Pinot Grigio e mais'],['Portugal','Douro, Alentejo, Dão e Vinho Verde'],['Espanha','Tempranillo, Garnacha e Cava'],['Uruguai','Tannat e outras castas'],['Estados Unidos','Napa Valley, Sonoma e Oregon'],['África do Sul','Pinotage, Chenin Blanc e blends'],['Austrália','Shiraz e Chardonnay'],['Nova Zelândia','Sauvignon Blanc e Pinot Noir']];
-let activeCategory='Todos',activeCountry='Argentina',cart=JSON.parse(localStorage.getItem('milao_cart')||'{}');
+let activeCategory='Todos',activeCountry='Argentina',cart=JSON.parse(localStorage.getItem('milao_cart_guest')||'{}'),cartOwnerId=null,currentProfile=null,cartSaveTimer=null;
 const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function toast(s){let t=document.getElementById('toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function renderCategories(){let el=document.getElementById('categoryGrid');el.innerHTML=categories.map(c=>`<button class="category ${activeCategory===c[0]?'selected':''}" data-cat="${c[0]}"><span class="symbol">${c[1]}</span><b>${c[0]}</b><small>${c[2]}</small></button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>{activeCategory=b.dataset.cat;document.getElementById('catalogo').scrollIntoView({behavior:'smooth'});renderCategories();renderFilters();renderProducts()})}
@@ -153,7 +201,7 @@ function renderFilters(){let list=['Todos',...new Set(products.map(p=>p.category
 function renderProducts(){let q=document.getElementById('search').value.toLowerCase();let sort=document.getElementById('sort').value;let list=products.filter(p=>(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}el.innerHTML=list.map(p=>{let old=p.oldPrice;let disc=old?Math.round((1-p.price/old)*100):null;return `<article class="product"><div class="product-art"><span>${p.category==='Sucos'?'🍹':'✧'}</span></div><div class="product-body"><div class="product-meta">${p.country} · ${p.category}</div><h3>${p.name}</h3><p>${p.description}</p><div class="prices"><span class="current">${brl(p.price)}</span>${old?`<span class="was">${brl(old)}</span><span class="discount">-${disc}%</span>`:''}</div><div class="price-note">${old?'Oferta cadastrada':'Preço atual publicado'}</div><button class="add" data-add="${p.id}">Adicionar à sacola +</button></div></article>`}).join('');el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
 function waLink(msg){return 'https://wa.me/'+WA+'?text='+encodeURIComponent(msg)}
 function add(id){cart[id]=(cart[id]||0)+1;saveCart();toast('Produto adicionado à sua sacola.')}
-function saveCart(){localStorage.setItem('milao_cart',JSON.stringify(cart));document.getElementById('cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);renderCart()}
+function saveCart(sync=true){const key=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';try{localStorage.setItem(key,JSON.stringify(cart));}catch(e){}document.getElementById('cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);renderCart();if(sync&&cartOwnerId){clearTimeout(cartSaveTimer);cartSaveTimer=setTimeout(()=>persistCart(),250);}}
 function renderCart(){let entries=Object.entries(cart).filter(([id,n])=>n>0&&products.some(p=>p.id===id));let el=document.getElementById('cartItems');if(!entries.length){el.innerHTML='<div style="text-align:center;padding:50px 10px;color:#777"><div style="font-size:40px">🛍</div><b>Sua sacola está vazia.</b><p style="font-size:12px">Explore o cardápio e adicione seus favoritos.</p></div>';document.getElementById('cartTotal').textContent=brl(0);return}let total=0;el.innerHTML=entries.map(([id,n])=>{let p=products.find(x=>x.id===id);total+=p.price*n;return `<div class="cart-line"><div><b>${p.name}</b><small>${brl(p.price)} cada · ${brl(p.price*n)}</small></div><div class="qty"><button data-dec="${id}">−</button><span>${n}</span><button data-inc="${id}">+</button></div></div>`}).join('');document.getElementById('cartTotal').textContent=brl(total);el.querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>{cart[b.dataset.dec]--;if(cart[b.dataset.dec]<=0)delete cart[b.dataset.dec];saveCart()});el.querySelectorAll('[data-inc]').forEach(b=>b.onclick=()=>{cart[b.dataset.inc]++;saveCart()})}
 function openCart(){document.getElementById('cartDrawer').classList.add('open')}
 function closeCart(){document.getElementById('cartDrawer').classList.remove('open')}
@@ -165,11 +213,12 @@ document.getElementById('checkout').onclick=async()=>{
   const address=document.getElementById('deliveryAddress').value.trim();
   const payment=document.getElementById('paymentMethod').value;
   if(address.length<8){toast('Informe o endereço completo para entrega.');document.getElementById('deliveryAddress').focus();return;}
-  const name=currentUser.user_metadata?.full_name || '';
-  const phone=document.getElementById('customerPhone').value.trim();
+  const name=currentProfile?.full_name || currentUser.user_metadata?.full_name || '';
+  const phone=document.getElementById('customerPhone').value.trim() || currentProfile?.phone || '';
   if(!name || phone.replace(/\D/g,'').length<10){toast('Informe um WhatsApp válido para contato.');document.getElementById('customerPhone').focus();return;}
   const pendingWindow=window.open('about:blank','_blank');
   const items=entries.map(([id,n])=>({id,quantity:n}));
+  await supa.from('profiles').update({phone,delivery_address:address,updated_at:new Date().toISOString()}).eq('id',currentUser.id);
   const {data:orderId,error}=await supa.rpc('create_order',{
     p_customer_name:name,p_customer_phone:phone,p_delivery_address:address,
     p_payment_method:payment,p_items:items,p_notes:null
@@ -197,10 +246,8 @@ document.getElementById('registerForm').onsubmit=async e=>{
   if(password.length<8){toast('A senha precisa ter pelo menos 8 caracteres.');return;}
   const {data,error}=await supa.auth.signUp({email,password,options:{data:{full_name:name}}});
   if(error){toast(error.message);return;}
-  if(data.session){toast('Conta criada e conectada.');}
-  else{toast('Cadastro iniciado. Confira seu e-mail para confirmar a conta.');}
-  document.getElementById('accountModal').classList.add('open');
-  await refreshAuth();
+  if(data.session){toast('Conta criada! Você já entrou no Empório Milão.');document.getElementById('accountModal').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});await refreshAuth();}
+  else{toast('Cadastro criado. Confirme o e-mail recebido para liberar o primeiro acesso.');document.getElementById('accountModal').classList.add('open');}
 };
 document.getElementById('loginBtn').onclick=async()=>{
   const email=document.getElementById('loginEmail').value.trim().toLowerCase();
@@ -208,7 +255,7 @@ document.getElementById('loginBtn').onclick=async()=>{
   if(!email || !password){toast('Informe e-mail e senha.');return;}
   const {error}=await supa.auth.signInWithPassword({email,password});
   if(error){toast(error.message);return;}
-  toast('Login realizado com sucesso.');await refreshAuth();
+  toast('Login realizado com sucesso.');document.getElementById('accountModal').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});await refreshAuth();
 };
 document.getElementById('logoutBtn').onclick=async()=>{const {error}=await supa.auth.signOut();if(error){toast(error.message);return;}toast('Você saiu da sua conta.');await refreshAuth();};
 document.getElementById('accountBtn').onclick=async()=>{await refreshAuth();document.getElementById('accountModal').classList.add('open');};
@@ -217,7 +264,7 @@ menuToggle.onclick=()=>{const links=document.getElementById('siteLinks');const o
 document.querySelectorAll('#siteLinks a').forEach(link=>link.addEventListener('click',()=>{document.getElementById('siteLinks').classList.remove('open');menuToggle.setAttribute('aria-expanded','false');menuToggle.textContent='Menu';}));
 document.getElementById('closeModal').onclick=()=>document.getElementById('accountModal').classList.remove('open');
 document.getElementById('accountModal').onclick=e=>{if(e.target.id==='accountModal')e.currentTarget.classList.remove('open');};
-document.getElementById('editAccount').onclick=()=>{document.getElementById('accountModal').classList.remove('open');document.getElementById('membership').scrollIntoView({behavior:'smooth'});};
+
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function slugify(v){return String(v||'produto').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50)||'produto';}
 async function loadStoreSettings(){
@@ -228,7 +275,11 @@ async function loadStoreSettings(){
  const hours=document.getElementById('hoursList');if(hours&&data.opening_hours){hours.innerHTML=data.opening_hours.split('|').map(line=>{const i=line.indexOf(':');return i>0?'<div class="hours-row"><span>'+escapeHtml(line.slice(0,i).trim())+'</span><b>'+escapeHtml(line.slice(i+1).trim())+'</b></div>':'<div class="hours-row">'+escapeHtml(line.trim())+'</div>';}).join('');}
 }
 async function openAdminPanel(){
- if(!isAdmin){toast('Acesso administrativo não autorizado.');return;}
+ const {data:{session}}=await supa.auth.getSession();
+ if(!session?.user){toast('Entre na conta administrativa primeiro.');document.getElementById('accountModal').classList.add('open');return;}
+ const {data:adminCheck,error:adminCheckError}=await supa.rpc('is_admin');
+ isAdmin=!adminCheckError&&adminCheck===true;
+ if(!isAdmin){console.error('Verificação ADM:',adminCheckError);toast(adminCheckError?'Falha ao verificar o acesso ADM: '+adminCheckError.message:'Esta conta não possui permissão administrativa.');return;}
  const modal=document.getElementById('adminModal'),content=document.getElementById('adminContent');modal.classList.add('open');content.textContent='Carregando painel...';
  const [or,pr,cr,sr]=await Promise.all([
   supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,status,total_amount,created_at,order_items(product_name,quantity)').order('created_at',{ascending:false}).limit(100),
@@ -262,9 +313,48 @@ async function openAdminPanel(){
  content.querySelectorAll('[data-status]').forEach(sel=>sel.onchange=async()=>{const {error}=await supa.from('orders').update({status:sel.value,updated_at:new Date().toISOString()}).eq('id',sel.dataset.status);toast(error?'Falha ao atualizar pedido.':'Pedido atualizado.');});
  document.getElementById('settingsForm').onsubmit=async e=>{e.preventDefault();const whatsapp=document.getElementById('sWhatsapp').value.replace(/\D/g,'');if(whatsapp.length<10||whatsapp.length>15){toast('Confira o WhatsApp com DDI e DDD.');return;}const payload={store_name:document.getElementById('sName').value.trim(),announcement:document.getElementById('sAnnouncement').value.trim(),whatsapp,opening_hours:document.getElementById('sHours').value.trim(),updated_at:new Date().toISOString()};const {error}=await supa.from('store_settings').update(payload).eq('id',true);if(error){toast('Não foi possível salvar as configurações.');return;}WA=whatsapp;document.getElementById('announcementBar').textContent=payload.announcement;document.title=payload.store_name+' — Curadoria para bons momentos';document.getElementById('hoursList').innerHTML=payload.opening_hours.split('|').map(line=>{const i=line.indexOf(':');return i>0?'<div class="hours-row"><span>'+escapeHtml(line.slice(0,i).trim())+'</span><b>'+escapeHtml(line.slice(i+1).trim())+'</b></div>':'<div class="hours-row">'+escapeHtml(line.trim())+'</div>';}).join('');toast('Configurações salvas.');};
 }
+
+document.getElementById('settingsToggleBtn').onclick=()=>{const box=document.getElementById('accountSettings');box.style.display=box.style.display==='none'?'block':'none';};
+document.getElementById('profileForm').onsubmit=async e=>{
+ e.preventDefault();if(!currentUser){toast('Entre na sua conta para alterar seus dados.');return;}
+ const full_name=document.getElementById('profileName').value.trim(),phone=document.getElementById('profilePhone').value.trim(),delivery_address=document.getElementById('profileAddress').value.trim();
+ if(full_name.length<2){toast('Informe seu nome completo.');return;}
+ const {error:authError}=await supa.auth.updateUser({data:{full_name}});
+ if(authError){toast('Não foi possível atualizar o nome: '+authError.message);return;}
+ const {error}=await supa.from('profiles').update({full_name,phone,delivery_address,updated_at:new Date().toISOString()}).eq('id',currentUser.id);
+ if(error){toast('Não foi possível salvar os dados: '+error.message);return;}
+ currentProfile={...(currentProfile||{}),full_name,phone,delivery_address};document.getElementById('accountStatus').textContent='Olá, '+full_name+'. Seus dados e pedidos estão vinculados a esta conta.';toast('Dados da conta atualizados.');
+};
+document.getElementById('passwordForm').onsubmit=async e=>{
+ e.preventDefault();const password=document.getElementById('newPassword').value;
+ if(password.length<8){toast('A senha precisa ter pelo menos 8 caracteres.');return;}
+ const {error}=await supa.auth.updateUser({password});
+ if(error){toast('Não foi possível atualizar a senha: '+error.message);return;}
+ e.currentTarget.reset();toast('Senha atualizada com sucesso.');
+};
+document.getElementById('avatarForm').onsubmit=async e=>{
+ e.preventDefault();if(!currentUser)return;
+ const file=document.getElementById('profileAvatarFile').files[0];if(!file){toast('Escolha uma imagem primeiro.');return;}
+ if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>2*1024*1024){toast('Use JPG, PNG ou WEBP de até 2 MB.');return;}
+ const ext=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg',path=currentUser.id+'/avatar.'+ext;
+ const {error:uploadError}=await supa.storage.from('profile-avatars').upload(path,file,{upsert:true,contentType:file.type});
+ if(uploadError){toast('Não foi possível enviar a foto: '+uploadError.message);return;}
+ const {data}=supa.storage.from('profile-avatars').getPublicUrl(path),avatar_url=data.publicUrl+'?v='+Date.now();
+ const {error}=await supa.from('profiles').update({avatar_url,updated_at:new Date().toISOString()}).eq('id',currentUser.id);
+ if(error){toast('Foto enviada, mas não foi possível salvar no perfil: '+error.message);return;}
+ currentProfile={...(currentProfile||{}),avatar_url};document.getElementById('accountAvatar').innerHTML='<img src="'+escapeHtml(avatar_url)+'" alt="Foto de perfil">';e.currentTarget.reset();toast('Foto de perfil atualizada.');
+};
+
 document.getElementById('adminOpenBtn').onclick=openAdminPanel;
 document.getElementById('closeAdmin').onclick=()=>document.getElementById('adminModal').classList.remove('open');
 document.getElementById('adminModal').onclick=e=>{if(e.target.id==='adminModal')e.currentTarget.classList.remove('open');};
-renderCategories();renderFilters();renderProducts();renderCountries();updateCountry();saveCart();initSupabase();
+async function initSupabase(){
+  supa.auth.onAuthStateChange((event,session)=>{
+    currentUser=session?.user||null;
+    Promise.resolve().then(()=>refreshAuth()).catch(error=>console.error('Falha ao atualizar sessão:',error));
+  });
+  await refreshAuth();
+}
+renderCategories();renderFilters();renderProducts();renderCountries();updateCountry();saveCart(false);initSupabase().catch(error=>console.error('Falha na inicialização:',error));
 </script>
 </body></html>
