@@ -347,6 +347,7 @@ async function openAdminPanel(){
  if(!session?.user){toast('Entre com a conta administrativa para continuar.');document.getElementById('accountModal').classList.add('open');return;}
  const {data:allowed,error}=await supa.rpc('is_admin');isAdmin=!error&&allowed===true;
  if(!isAdmin){toast(error?'Não foi possível validar o acesso.':'Esta conta não possui permissão administrativa.');return;}
+ document.getElementById('accountModal').classList.remove('open');
  document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;
  const p=new URLSearchParams(location.search);p.set('admin','1');history.pushState({admin:true},'',location.pathname+'?'+p.toString());
  document.getElementById('adminIdentity').textContent=session.user.email||'Administrador';await loadAdminDashboard();
