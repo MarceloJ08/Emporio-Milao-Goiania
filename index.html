@@ -354,7 +354,6 @@ document.getElementById('closeAdmin').onclick=()=>document.getElementById('admin
 document.getElementById('adminModal').onclick=e=>{if(e.target.id==='adminModal')e.currentTarget.classList.remove('open');};
 async function initSupabase(){
   supa.auth.onAuthStateChange((event,session)=>{
-    currentUser=session?.user||null;
     Promise.resolve().then(()=>refreshAuth()).catch(error=>console.error('Falha ao atualizar sessão:',error));
   });
   await refreshAuth();
