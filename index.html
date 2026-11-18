@@ -321,7 +321,7 @@ document.getElementById('profileForm').onsubmit=async e=>{
  e.preventDefault();if(!currentUser){toast('Entre na sua conta para alterar seus dados.');return;}
  const full_name=document.getElementById('profileName').value.trim(),phone=document.getElementById('profilePhone').value.trim(),delivery_address=document.getElementById('profileAddress').value.trim(),email=document.getElementById('profileEmail').value.trim().toLowerCase();
  if(full_name.length<2){toast('Informe seu nome completo.');return;}
- if(!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)){toast('Informe um e-mail válido.');return;}
+ if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Informe um e-mail válido.');return;}
  const {error:authError}=await supa.auth.updateUser({data:{full_name}});
  if(authError){toast('Não foi possível atualizar o nome: '+authError.message);return;}
  const {error}=await supa.from('profiles').update({full_name,phone,delivery_address,updated_at:new Date().toISOString()}).eq('id',currentUser.id);
