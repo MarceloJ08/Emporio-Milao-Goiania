@@ -14,7 +14,7 @@
 - `private.admin_users`: lista privada de UUIDs autorizados como administradores.
 - `public.store_settings`: nome, mensagem do topo, WhatsApp e horários. A leitura é pública; a alteração é exclusiva do administrador.
 - `public.create_order(...)`: valida a sessão, endereço, telefone, pagamento, produtos ativos e quantidades; calcula o total usando os preços do banco.
-- RLS habilitado nas tabelas públicas. A autorização administrativa é conferida no banco, não por um botão ou campo do navegador.
+- RLS habilitado nas tabelas públicas. Os privilégios de leitura de perfis, pedidos e itens foram removidos de `anon` e `PUBLIC`; somente usuários autenticados recebem acesso, sempre limitado por RLS. A autorização administrativa é conferida no banco, não por um botão ou campo do navegador.
 
 ## Área do cliente
 Após entrar na conta, o cliente consegue consultar seu histórico de pedidos. A consulta também filtra pelo próprio UUID e é protegida por RLS.
