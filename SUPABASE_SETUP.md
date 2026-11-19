@@ -18,7 +18,7 @@
 - Perfis, pedidos e itens são filtrados por proprietário, atendente autorizado ou administrador, conforme a função.
 - Estoque do galpão e estoque por unidade são dados internos.
 - Funções privilegiadas devem permanecer no schema `private`, com EXECUTE concedido apenas aos papéis necessários.
-- A tabela `private.admin_users` agora usa RLS em modo FORCE e não concede acesso direto a anon/authenticated; a autorização ocorre por `private.is_admin()`.
+- As tabelas `private.admin_users` e `private.sales_staff` usam RLS em modo FORCE e não concedem acesso direto a anon/authenticated; a autorização/gestão ocorre por funções privadas controladas.
 
 ## Áreas
 - Loja pública: `/`.
