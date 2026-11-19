@@ -32,3 +32,12 @@ A vitrine, o catálogo ativo e as informações comerciais necessárias à compr
 - Importar apenas planilhas oficiais e validadas; não inferir quantidades.
 - Manter estoque do galpão e estoque de cada unidade separados.
 - Restringir importação/ajustes a administradores designados e registrar origem, autor e data de cada carga.
+
+## Privilégios mínimos e recuperação de conta
+- As tabelas do schema `public` concedem somente operações necessárias às funções da loja; roles públicas não recebem privilégios de escrita sobre pedidos, perfis, estoque ou tabelas internas.
+- RLS continua habilitado nas tabelas. Grants SQL e políticas RLS atuam em conjunto: conceder uma operação não permite ultrapassar as políticas por linha.
+- Índices foram adicionados para chaves estrangeiras usadas em relacionamentos de pedidos e estoque.
+- A recuperação de senha usa link de uso único enviado ao e-mail cadastrado; a senha só é alterada após validação do link pelo Supabase Auth. Não há SMS habilitado.
+- Novos cadastros e redefinições exigem senha de pelo menos 12 caracteres na interface. O Supabase Auth continua aplicando seus próprios limites de envio e tentativas; não desativar rate limits nem controles antiabuso.
+- O alerta de proteção contra senhas vazadas ainda precisa ser habilitado em Supabase Dashboard → Authentication → Settings → Password Security. Não declarar a configuração concluída até confirmar no painel.
+- O repositório foi verificado como público. Torná-lo privado no GitHub (Settings → General → Danger Zone → Change visibility) e revisar os colaboradores. O código enviado ao navegador continua sendo inspecionável; regras sigilosas e segredos devem permanecer no banco/funções server-side.
