@@ -299,18 +299,51 @@ function renderCountries(){let el=document.getElementById('countryList');el.inne
 function updateCountry(){let c=countries.find(x=>x[0]===activeCountry);document.getElementById('countryTitle').textContent=c[0];document.getElementById('countryDesc').textContent=c[1]+'. Explore os estilos e peça à equipe os rótulos disponíveis desta origem.';document.getElementById('countryNote').textContent='A seleção completa de vinhos deste país depende da importação do catálogo oficial. A estrutura está preparada para separar tintos, brancos, rosés, espumantes e premium sem misturar países.'}
 document.getElementById('wineStyles').querySelectorAll('button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#wineStyles button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const style=b.textContent==='Todos os estilos'?null:b.textContent;openCollection({category:'Vinhos',country:activeCountry,style})});
 
+let registrationInProgress=false;
 document.getElementById('registerForm').onsubmit=async e=>{
   e.preventDefault();
+  if(registrationInProgress)return;
+  const form=e.currentTarget;
+  const submitButton=form.querySelector('button[type="submit"]');
   const name=document.getElementById('fullName').value.trim();
   const email=document.getElementById('email').value.trim().toLowerCase();
   const password=document.getElementById('registerPassword').value;
   if(name.length<2){toast('Informe seu nome completo.');return;}
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Informe um e-mail válido.');return;}
   if(password.length<8){toast('A senha precisa ter pelo menos 8 caracteres.');return;}
-  const {data,error}=await supa.auth.signUp({email,password,options:{data:{full_name:name}}});
-  if(error){toast(error.message);return;}
-  if(data.session){toast('Conta criada! Você já entrou no Empório Milão.');document.getElementById('accountModal').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});await refreshAuth();}
-  else{toast('Cadastro criado. Confirme o e-mail recebido para liberar o primeiro acesso.');document.getElementById('accountModal').classList.add('open');}
+  registrationInProgress=true;
+  if(submitButton){submitButton.disabled=true;submitButton.dataset.originalText=submitButton.textContent;submitButton.textContent='Criando conta...';}
+  try{
+    const {data,error}=await supa.auth.signUp({email,password,options:{data:{full_name:name}}});
+    if(error){
+      const message=String(error.message||'').toLowerCase();
+      if(message.includes('already registered')||message.includes('already been registered')||message.includes('duplicate key')||message.includes('users_email_partial_key')){
+        toast('Este e-mail já possui um cadastro. Entre na sua conta ou use a opção de recuperar senha.');
+      }else if(message.includes('over_email_send_rate_limit')||message.includes('security purposes')||error.status===429){
+        toast('O limite de envio foi atingido. Aguarde alguns minutos antes de tentar novamente.');
+      }else{
+        console.error('Erro no cadastro:',error);
+        toast('Não foi possível concluir o cadastro. Confira os dados e tente novamente.');
+      }
+      return;
+    }
+    form.reset();
+    if(data.session){
+      toast('Conta criada! Você já entrou no Empório Milão.');
+      document.getElementById('accountModal').classList.remove('open');
+      window.scrollTo({top:0,behavior:'smooth'});
+      await refreshAuth();
+    }else{
+      toast('Cadastro iniciado! Enviamos um link de confirmação para '+email+'. Verifique também a caixa de spam.');
+      document.getElementById('accountModal').classList.add('open');
+    }
+  }catch(error){
+    console.error('Falha inesperada no cadastro:',error);
+    toast('Falha de conexão ao criar a conta. Verifique sua internet e tente novamente.');
+  }finally{
+    registrationInProgress=false;
+    if(submitButton){submitButton.disabled=false;submitButton.textContent=submitButton.dataset.originalText||'Criar conta';}
+  }
 };
 document.getElementById('loginBtn').onclick=async()=>{
   const email=document.getElementById('loginEmail').value.trim().toLowerCase();
