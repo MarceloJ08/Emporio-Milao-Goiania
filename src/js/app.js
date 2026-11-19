@@ -56,6 +56,7 @@ async function refreshAuth(){
     const name=currentProfile?.full_name||currentUser.user_metadata?.full_name||currentUser.email||'cliente';
     document.getElementById('accountStatus').textContent='Olá, '+name+'. Seus dados e pedidos estão vinculados a esta conta.';document.getElementById('accountBtn').textContent='Minha conta';
     document.getElementById('accountLogin').style.display='none';
+    document.getElementById('accountRegister').style.display='none';
     document.getElementById('accountSigned').style.display='block';
     document.getElementById('profileName').value=currentProfile?.full_name||currentUser.user_metadata?.full_name||'';
     document.getElementById('profilePhone').value=currentProfile?.phone||'';
@@ -79,6 +80,7 @@ async function refreshAuth(){
   }else{
     document.getElementById('accountStatus').textContent='Entre com seu e-mail e senha ou crie sua conta.';document.getElementById('accountBtn').textContent='Login';
     document.getElementById('accountLogin').style.display='block';
+    document.getElementById('accountRegister').style.display='block';
     document.getElementById('accountSigned').style.display='none';
     document.getElementById('customerOrders').innerHTML='';
     document.getElementById('adminOpenBtn').style.display='none';
@@ -383,7 +385,7 @@ document.getElementById('profileForm').onsubmit=async e=>{
 };
 document.getElementById('passwordForm').onsubmit=async e=>{
  e.preventDefault();const password=document.getElementById('newPassword').value;
- if(password.length<8){toast('A senha precisa ter pelo menos 8 caracteres.');return;}
+ if(password.length<12){toast('A senha precisa ter pelo menos 12 caracteres.');return;}
  const {error}=await supa.auth.updateUser({password});
  if(error){toast('Não foi possível atualizar a senha: '+error.message);return;}
  e.currentTarget.reset();toast('Senha atualizada com sucesso.');
