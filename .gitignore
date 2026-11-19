@@ -17,10 +17,11 @@ yarn-debug.log*
 pnpm-debug.log*
 *.tmp
 
-# Local exports / operational data
+# Local exports / operational data (templates are safe to version)
 *.xlsx
 *.xls
 *.csv
 *.ods
+!templates/*.csv
 backups/
 exports/
