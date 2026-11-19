@@ -1,0 +1,20 @@
+-- Least-privilege table grants and foreign-key indexes for Empório Milão.
+REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+GRANT SELECT ON TABLE public.products, public.store_settings TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.products TO authenticated;
+GRANT SELECT ON TABLE public.store_settings TO authenticated;
+GRANT INSERT, UPDATE ON TABLE public.store_settings TO authenticated;
+GRANT SELECT, UPDATE ON TABLE public.profiles TO authenticated;
+GRANT SELECT, UPDATE ON TABLE public.orders TO authenticated;
+GRANT SELECT ON TABLE public.order_items TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.customer_carts TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.inventory TO authenticated;
+GRANT SELECT ON TABLE public.inventory_movements TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON TABLE public.store_inventory TO authenticated;
+GRANT SELECT ON TABLE public.store_inventory_movements, public.store_locations TO authenticated;
+CREATE INDEX IF NOT EXISTS idx_sales_staff_created_by ON private.sales_staff(created_by);
+CREATE INDEX IF NOT EXISTS idx_orders_seller_user_id ON public.orders(seller_user_id);
+CREATE INDEX IF NOT EXISTS idx_orders_store_id ON public.orders(store_id);
+CREATE INDEX IF NOT EXISTS idx_store_inventory_product_id ON public.store_inventory(product_id);
+CREATE INDEX IF NOT EXISTS idx_store_inventory_movements_created_by ON public.store_inventory_movements(created_by);
+CREATE INDEX IF NOT EXISTS idx_store_inventory_movements_product_id ON public.store_inventory_movements(product_id);
