@@ -393,7 +393,7 @@ async function loadAdminDashboard(){
  
  const adminAreaConfig=[
   {id:'warehouse',label:'Galpão e estoques',desc:'Entradas, saídas, ajustes e saldos das unidades.'},
-  {id:'discounts',label:'Descontos e equipe',desc:'Política comercial e acessos de vendedores.'},
+  {id:'discounts',label:'Descontos para clientes',desc:'Regra de desconto, autorizações e limites por atendente.'},
   {id:'orders',label:'Pedidos online',desc:'Acompanhe pedidos, andamento e pagamentos.'},
   {id:'finance',label:'Faturamento detalhado',desc:'Recebimentos separados por forma de pagamento.'},
   {id:'products',label:'Produtos e catálogo',desc:'Cadastro, preços, promoções e publicação.'},
@@ -416,6 +416,9 @@ async function loadAdminDashboard(){
   else if(heading.includes('clientes cadastrados'))area='customers';
   areaPanels[area].appendChild(section);
  });
+ const discountPolicy=document.createElement('div');discountPolicy.className='admin-discount-policy-note';
+ discountPolicy.innerHTML='<b>Política de descontos vigente</b><p>Pedidos a partir de R$ 1.000 podem receber 3% de desconto quando o vendedor optar por aplicar. Descontos acima de 3% exigem autorização por PIN e respeitam o limite liberado para cada atendente.</p>';
+ areaPanels.discounts.prepend(discountPolicy);
  const setAdminArea=key=>{
   activeAdminArea=key;
   Object.entries(areaPanels).forEach(([id,panel])=>panel.hidden=id!==key);
