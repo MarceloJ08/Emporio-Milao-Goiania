@@ -1,6 +1,6 @@
 # Histórico remoto de migrations do Supabase
 
-Consulta ao histórico do projeto em 19/11/2026. O banco remoto registra **21 migrations aplicadas**.
+Consulta ao histórico do projeto em 19/11/2026. O banco remoto registra **23 migrations aplicadas**.
 
 ## Scripts atualmente versionados no repositório
 
@@ -10,6 +10,8 @@ Consulta ao histórico do projeto em 19/11/2026. O banco remoto registra **21 mi
 - `20261118210302_restrict_anonymous_customer_data_access.sql`
 - `20261119023414_harden_private_admin_users.sql`
 - `20261119023657_harden_private_sales_staff.sql`
+- `20261119220057_enable_realtime_orders_for_admin_dashboard.sql`
+- `20261119220124_add_confirmed_order_count_to_admin_finance_summary.sql`
 
 ## Histórico remoto completo
 
@@ -36,6 +38,8 @@ Consulta ao histórico do projeto em 19/11/2026. O banco remoto registra **21 mi
 | 20261119022450 | link_assisted_sales_to_registered_customers | Não |
 | 20261119023414 | harden_private_admin_users | Sim |
 | 20261119023657 | harden_private_sales_staff | Sim |
+| 20261119220057 | enable_realtime_orders_for_admin_dashboard | Sim |
+| 20261119220124 | add_confirmed_order_count_to_admin_finance_summary | Sim |
 
 ## Importante
 O banco de produção contém todas as migrations listadas, mas **15 scripts históricos ainda não estão arquivados no GitHub**. Não recriei esses arquivos com SQL inventado. O sistema de produção permanece íntegro; entretanto, para reconstruir o banco do zero em outro projeto, será necessário recuperar/reconstruir e revisar os 15 scripts ausentes a partir do histórico de desenvolvimento e do schema atual.
@@ -43,3 +47,9 @@ O banco de produção contém todas as migrations listadas, mas **15 scripts his
 Não reaplique migrations já registradas no projeto remoto. Antes de qualquer ambiente novo, gerar e revisar um baseline completo e testá-lo em um projeto separado.
 
 - `20261119190000_product_image_storage_and_store_addresses.sql` — bucket público `product-images` com leitura pública e escrita restrita a administradores; atualização dos endereços das três unidades.
+
+
+## Central administrativa organizada e atualização ao vivo
+
+- `20261119220057_enable_realtime_orders_for_admin_dashboard.sql` habilita eventos Realtime da tabela `public.orders` para o painel administrativo.
+- `20261119220124_add_confirmed_order_count_to_admin_finance_summary.sql` adiciona ao resumo financeiro a contagem global de pedidos confirmados/em andamento, mantendo a autorização exclusiva para administradores.
