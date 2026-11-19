@@ -41,3 +41,5 @@ Consulta ao histórico do projeto em 19/11/2026. O banco remoto registra **21 mi
 O banco de produção contém todas as migrations listadas, mas **15 scripts históricos ainda não estão arquivados no GitHub**. Não recriei esses arquivos com SQL inventado. O sistema de produção permanece íntegro; entretanto, para reconstruir o banco do zero em outro projeto, será necessário recuperar/reconstruir e revisar os 15 scripts ausentes a partir do histórico de desenvolvimento e do schema atual.
 
 Não reaplique migrations já registradas no projeto remoto. Antes de qualquer ambiente novo, gerar e revisar um baseline completo e testá-lo em um projeto separado.
+
+- `20261119190000_product_image_storage_and_store_addresses.sql` — bucket público `product-images` com leitura pública e escrita restrita a administradores; atualização dos endereços das três unidades.
