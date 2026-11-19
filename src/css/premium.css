@@ -1,0 +1,159 @@
+/* Empório Milão — direção de arte premium 2026 */
+:root{--ink:#171411;--forest:#201b18;--moss:#a68b66;--gold:#c7a36c;--paper:#f4f0e9;--white:#fffdf8;--muted:#756e65;--line:#ded6ca;--red:#702c38;--wine:#4c202b}
+body{background:#f4f0e9;color:#201b18;font-family:Inter,Arial,sans-serif}
+.announcement{background:#241b1b;color:#e9ddcb;letter-spacing:.19em;font-size:9px;padding:11px 20px}
+.announcement span{color:#c7a36c;padding:0 9px}
+header{background:rgba(249,247,242,.96);border-bottom:1px solid rgba(58,44,34,.12);backdrop-filter:blur(18px)}
+.nav{max-width:1440px;min-height:88px;padding:0 42px}
+.logo{display:flex;align-items:center;gap:11px;color:#30201f}
+.brand-mark{width:43px;height:43px;display:grid;place-items:center;color:#7d4a45;flex:0 0 auto}
+.brand-mark svg{width:100%;height:100%}
+.logotype{display:flex;flex-direction:column;gap:0;line-height:1}
+.logotype small{font-size:8px;letter-spacing:.34em;font-weight:700}
+.logotype b{font:31px/1 'DM Serif Display',Georgia,serif;letter-spacing:.045em}
+.logotype em{font-style:normal;font-size:7px;letter-spacing:.24em;margin-top:5px;color:#9a7956}
+.links{gap:30px}
+.links a{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:#554a42}
+.links a:hover{color:#8a4b50}
+.navright{gap:11px}
+.iconbtn,.cartbtn{border:1px solid #d9d0c4;background:transparent;color:#332925;border-radius:0;padding:12px 17px;font-size:10px;text-transform:uppercase;letter-spacing:.12em}
+.cartbtn{background:#39232a;color:#fffaf2;border-color:#39232a}
+.count{background:#c6a36d;color:#241b1b}
+.mobile-menu-toggle{border:1px solid #d9d0c4;border-radius:0;background:transparent}
+.benefit-strip{display:grid;grid-template-columns:repeat(3,1fr);background:#e9e2d8;border-bottom:1px solid #d9d0c4;padding:17px max(30px,calc((100vw - 1320px)/2));gap:20px}
+.benefit-strip>div{display:grid;grid-template-columns:32px 1fr;grid-template-rows:auto auto;align-items:center;column-gap:10px;max-width:300px;margin:auto;width:100%}
+.benefit-icon{grid-row:1/3;color:#895b50;font-size:21px;text-align:center}
+.benefit-strip b{font-size:10px;text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.benefit-strip small{font-size:10px;color:#74695f;margin-top:3px}
+.hero{position:relative;isolation:isolate;min-height:690px;background:#251d1c;color:#f6f0e6;overflow:hidden;display:flex;align-items:center}
+.hero-photo,.hero-shade{position:absolute;inset:0;z-index:-2}
+.hero-photo{background-image:url('https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?auto=format&fit=crop&w=2200&q=88');background-position:center 53%;background-size:cover;transform:scale(1.015)}
+.hero-shade{z-index:-1;background:linear-gradient(90deg,rgba(25,19,18,.94) 0%,rgba(34,24,22,.82) 43%,rgba(34,24,22,.3) 100%),linear-gradient(0deg,rgba(21,17,16,.55),transparent 45%)}
+.hero-inner{max-width:1440px;width:100%;margin:0 auto;padding:100px 7% 115px;display:grid;grid-template-columns:minmax(0,1.2fr) minmax(260px,.65fr);align-items:end;gap:10%}
+.hero-copy{max-width:690px}
+.kicker{color:#d5b98d;font-size:9px;letter-spacing:.24em;font-weight:700}
+.kicker-dot{background:#c7a36c;box-shadow:0 0 0 5px rgba(199,163,108,.14)}
+.hero-overline{font:italic 20px 'DM Serif Display',Georgia,serif;color:#d7c6b1;margin:42px 0 12px}
+.hero h1{font:clamp(52px,6.4vw,92px)/.99 'DM Serif Display',Georgia,serif;font-weight:400;letter-spacing:-.035em;margin:0 0 24px;color:#fffaf2}
+.hero h1 i{color:#d3b98f;font-weight:400}
+.hero-copy>p:not(.hero-overline){max-width:520px;color:#ded5c9;font-size:14px;line-height:1.9}
+.hero-actions{margin-top:35px;gap:12px;flex-wrap:wrap}
+.hero .btn{border-radius:0;padding:16px 21px;font-size:9px;letter-spacing:.14em;text-transform:uppercase}
+.hero .btn.primary{background:#b18c60;color:#201a18;border:1px solid #b18c60}
+.hero .btn.ghost{border:1px solid rgba(246,240,230,.55);color:#fffaf2;background:rgba(255,255,255,.04)}
+.hero-proof{margin-top:53px;color:#d0b58b;font-size:8px;letter-spacing:.2em}
+.proof-line{width:55px;background:#b18c60}
+.hero-editorial{border-left:1px solid rgba(223,203,176,.45);padding:10px 0 10px 32px;max-width:330px;margin-bottom:8px}
+.editorial-number,.editorial-caption{font-size:8px;letter-spacing:.22em;color:#d4b88b}
+.editorial-rule{width:36px;height:1px;background:#b18c60;margin:23px 0}
+.hero-editorial h2{font:31px/1.13 'DM Serif Display',Georgia,serif;font-weight:400;margin:18px 0;color:#fffaf2}
+.hero-editorial h2 em{color:#d2b58c}
+.hero-editorial p{font-size:11px;line-height:1.8;color:#d7cec3}
+.hero-editorial>a{display:inline-flex;gap:28px;margin-top:25px;color:#d5b98d;font-size:8px;letter-spacing:.2em}
+.hero-bottomline{position:absolute;bottom:0;left:0;right:0;border-top:1px solid rgba(255,255,255,.2);padding:18px 7%;display:flex;justify-content:space-between;color:#d9c7ae;font-size:8px;letter-spacing:.2em}
+.hero-scroll{display:none}
+.manifesto{background:#f0ebe3;border-bottom:1px solid #ded6ca}
+.manifesto-inner{max-width:1250px;padding:30px 30px;gap:30px}
+.manifesto-item{border-right:1px solid #d9d0c4;padding:5px 28px}
+.manifesto-item:last-child{border:0}
+.manifesto-item .num{color:#a37d58;font:italic 20px 'DM Serif Display',serif}
+.manifesto-item b{font:20px 'DM Serif Display',Georgia,serif;color:#352823}
+.manifesto-item small{color:#7e7368;font-size:10px}
+.container{max-width:1320px}
+.discover,.catalog,.wine-map,.membership,.hours{padding-top:104px;padding-bottom:104px}
+.section-top{margin-bottom:39px;align-items:end}
+.eyebrow{color:#956f51;font-size:9px;letter-spacing:.22em;font-weight:700;text-transform:uppercase}
+.section-top h2,.locations-heading h2{font:clamp(35px,4vw,53px)/1.08 'DM Serif Display',Georgia,serif;font-weight:400;letter-spacing:-.02em;color:#30231f}
+.section-top>p{max-width:420px;color:#756b62;font-size:12px;line-height:1.9}
+.category-grid{gap:13px}
+.category{border:1px solid #e1d8cc;background:#f8f5ef;border-radius:0;min-height:145px;padding:22px;transition:.25s}
+.category:hover,.category.selected{background:#39262b;border-color:#39262b;color:#fff7ed;transform:translateY(-3px)}
+.category .symbol{font-size:25px;color:#a88760}
+.category b{font:20px 'DM Serif Display',Georgia,serif}
+.category small{font-size:10px;color:#81756b}
+.catalog{background:#ece6dd}
+.catalog-toolbar,.collection-toolbar{gap:12px}
+.search,.select{border:1px solid #d8cfc3;border-radius:0;background:#f9f6f0;padding:15px 17px;font-size:11px}
+.chip{border:1px solid #d5cabe;border-radius:0;background:transparent;color:#675a50;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:10px 14px}
+.chip.active,.chip:hover{background:#39262b;border-color:#39262b;color:#fff8ed}
+.grid{gap:20px}
+.product{border:1px solid #e1d8cc;border-radius:0;background:#fffdf8;box-shadow:0 8px 24px rgba(50,36,28,.035);transition:transform .25s,box-shadow .25s}
+.product:hover{transform:translateY(-5px);box-shadow:0 18px 40px rgba(50,36,28,.1)}
+.product-art{border-radius:0;background:linear-gradient(135deg,#eee7dc,#f8f5ef);height:230px}
+.product-art img{mix-blend-mode:multiply;padding:13px}
+.product-body{padding:20px}
+.product-meta{color:#987653;font-size:8px;letter-spacing:.16em;text-transform:uppercase}
+.product h3{font:20px/1.2 'DM Serif Display',Georgia,serif;font-weight:400;color:#332622}
+.product p{font-size:10px;line-height:1.65;color:#7b7066}
+.prices{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;margin-top:16px}
+.prices .current{font:24px 'DM Serif Display',Georgia,serif;color:#3c2429}
+.prices .was{font-size:11px;color:#94887d;text-decoration:line-through;order:0}
+.prices .discount{background:#7b343e;color:white;font-size:8px;letter-spacing:.1em;padding:5px 7px;order:1}
+.prices .current{order:2}
+.price-note{font-size:8px;color:#8d8277}
+.add{border:1px solid #4b2c32;background:#4b2c32;color:#fff9f0;border-radius:0;padding:13px;font-size:9px;letter-spacing:.12em;text-transform:uppercase}
+.add:hover{background:#a77f5c;border-color:#a77f5c;color:#211a17}
+.wine-map{background:#f6f2eb}
+.country-layout{border:1px solid #ded6ca;background:#fffdf8;border-radius:0}
+.country-list{background:#eee8df}
+.country-btn{border-bottom:1px solid #d8cfc3;border-radius:0;font-size:10px;letter-spacing:.08em}
+.country-btn.active{background:#39262b;color:#fff8ed}
+.country-content{padding:40px}
+.country-content h3{font:35px 'DM Serif Display',Georgia,serif}
+.membership{background:#e8e0d6}
+.member-layout{gap:70px}
+.member-layout>div h2{font:clamp(40px,4.5vw,58px)/1.05 'DM Serif Display',Georgia,serif;font-weight:400}
+.member-layout>div p{max-width:500px;color:#6e6359;font-size:12px;line-height:1.9}
+.member-form{border:1px solid #d8cfc3;border-radius:0;background:#fbf8f2;box-shadow:none;padding:35px}
+.member-form input,.member-form button{border-radius:0}
+.member-form button{background:#40262d;text-transform:uppercase;letter-spacing:.12em;font-size:9px}
+.hours{background:#f8f5ef}
+.hours-grid{gap:70px}
+.hours-grid h2{font:48px 'DM Serif Display',Georgia,serif;font-weight:400}
+.hours-grid p{font-size:12px;line-height:1.9;color:#776d64}
+.hours-list{border-top:1px solid #d9d0c4}
+.hours-row{padding:19px 0;border-bottom:1px solid #d9d0c4;font-size:11px}
+.locations-section{background:#251d1c;color:#f6f0e6;padding:110px 0 95px}
+.locations-heading{display:flex;justify-content:space-between;align-items:end;gap:40px;margin-bottom:42px}
+.locations-heading h2{color:#fff8ef;margin:12px 0 0}
+.locations-heading h2 em{color:#c6a16f;font-weight:400}
+.locations-heading>p{max-width:390px;color:#d0c4b8;font-size:12px;line-height:1.9}
+.locations-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.17)}
+.location-card{background:#2e2422;padding:30px;min-height:290px;position:relative;transition:background .2s}
+.location-card:hover,.location-featured{background:#392a2a}
+.location-index{font-size:8px;letter-spacing:.2em;color:#c9a77a}
+.location-pin{font-size:28px;color:#c6a16f;margin:28px 0 10px}
+.location-card h3{font:26px 'DM Serif Display',Georgia,serif;font-weight:400;color:#fff8ef;margin:0 0 12px}
+.location-card p{font-size:10px;line-height:1.9;color:#d2c7bd;min-height:58px}
+.location-card>a{display:inline-block;color:#d4b27f;font-size:8px;letter-spacing:.18em;margin-top:18px;border-bottom:1px solid #a98a62;padding-bottom:6px}
+.locations-contact{display:flex;justify-content:space-between;gap:20px;padding-top:26px;color:#d5c8bb;font-size:11px}
+.locations-contact a{color:#d6b17a}
+.footer{background:#171312;color:#e9e0d6;padding:65px 30px 20px}
+.footer-inner{max-width:1320px;grid-template-columns:1.4fr .7fr .8fr;gap:70px;padding-bottom:45px}
+.footer h3{font-size:9px;letter-spacing:.2em;color:#c7a36c}
+.footer p{font-size:11px;line-height:2;color:#bdb1a5}
+.footer a{color:#e8d7c2}
+.footer-brand>p{max-width:300px}
+.footer-logo{display:flex;align-items:center;gap:10px;color:#c8a775}
+.footer-logo svg{width:42px;height:42px}
+.footer-logo>span:last-child{display:flex;flex-direction:column}
+.footer-logo small{font-size:8px;letter-spacing:.3em}
+.footer-logo b{font:28px 'DM Serif Display',Georgia,serif;letter-spacing:.04em}
+.footer-whatsapp{display:inline-block;margin-top:12px;color:#d3b17e!important;font-size:8px;letter-spacing:.15em}
+.footer-bottom{border-color:rgba(255,255,255,.15);color:#95897e;font-size:9px}
+.float{border-radius:0;background:#6f343c;box-shadow:0 8px 28px rgba(0,0,0,.2);font-size:9px;letter-spacing:.1em;text-transform:uppercase}
+.cartbtn,.iconbtn,.btn,.add,.checkout{transition:all .2s}
+.admin-product-cell{display:flex;align-items:center;gap:10px;min-width:180px}
+.admin-product-cell img,.admin-product-placeholder{width:42px;height:50px;object-fit:contain;background:#eee8df;padding:3px}
+.admin-product-placeholder{display:grid;place-items:center;color:#80565a;font:18px 'DM Serif Display',serif}
+.admin-old-price{color:#8d4b4e}
+#pImageFile{padding:10px;background:#f5f0e8}
+.sales-mode .admin-topbar{background:#251d1c}
+.sales-mode .admin-title-row h1{font:42px 'DM Serif Display',Georgia,serif}
+.sales-mode .admin-section{border:1px solid #e2d8ca;border-radius:0;box-shadow:0 8px 25px rgba(40,30,24,.04)}
+.sales-mode .admin-primary{border-radius:0;background:#4b2c32}
+.sales-mode .admin-secondary{border-radius:0}
+.sales-mode #saleProductSearch{margin-bottom:8px}
+.sales-mode .admin-form input,.sales-mode .admin-form select{border-radius:0}
+@media(max-width:900px){.nav{padding:0 22px}.hero-inner{grid-template-columns:1fr;padding:85px 7% 110px}.hero-editorial{display:none}.hero{min-height:650px}.locations-grid{grid-template-columns:1fr}.location-card{min-height:0}.location-card p{min-height:0}.footer-inner{gap:35px}.member-layout,.hours-grid{gap:35px}}
+@media(max-width:640px){.announcement{font-size:8px;letter-spacing:.1em}.nav{min-height:72px;padding:0 15px}.brand-mark{width:35px;height:35px}.logotype b{font-size:26px}.logotype small{font-size:7px}.logotype em{font-size:6px}.navright{gap:5px}.iconbtn,.cartbtn{padding:10px 9px;font-size:8px}.benefit-strip{padding:13px 10px;gap:5px}.benefit-strip>div{grid-template-columns:1fr;text-align:center;gap:4px}.benefit-icon{grid-row:auto;font-size:18px}.benefit-strip b{font-size:8px;letter-spacing:.05em}.benefit-strip small{font-size:8px;line-height:1.3}.hero{min-height:630px}.hero-inner{padding:75px 24px 95px}.hero-overline{font-size:17px;margin-top:32px}.hero h1{font-size:clamp(48px,13vw,68px)}.hero-copy>p:not(.hero-overline){font-size:12px}.hero-actions{display:grid;align-items:start}.hero .btn{justify-content:center}.hero-proof{font-size:7px;letter-spacing:.12em;margin-top:38px}.hero-bottomline{padding:13px 18px;font-size:6px;letter-spacing:.08em}.manifesto-inner{display:grid;grid-template-columns:1fr;gap:15px;padding:22px}.manifesto-item{border-right:0;border-bottom:1px solid #d9d0c4;padding:10px 0;display:flex;gap:15px;align-items:center}.manifesto-item:last-child{border-bottom:0}.discover,.catalog,.wine-map,.membership,.hours{padding:70px 0}.section-top{display:block}.section-top>p{margin-top:15px}.category-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.category{min-height:125px;padding:15px}.category b{font-size:17px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product-art{height:165px}.product-body{padding:12px}.product h3{font-size:16px}.product p{font-size:9px}.prices .current{font-size:19px}.prices .was{font-size:9px}.prices .discount{font-size:7px}.add{font-size:8px;padding:11px 6px}.country-layout{display:block}.country-list{display:flex;overflow:auto}.country-btn{white-space:nowrap}.country-content{padding:24px}.member-form{padding:23px}.locations-section{padding:75px 0}.locations-heading{display:block}.locations-heading>p{margin-top:20px}.location-card{padding:24px}.locations-contact{display:block;line-height:2}.footer{padding:50px 20px 18px}.footer-inner{grid-template-columns:1fr;gap:26px}.footer-bottom{display:block;line-height:2}.float{left:12px;right:12px;bottom:12px;text-align:center}.sales-mode .admin-title-row h1{font-size:34px}}
