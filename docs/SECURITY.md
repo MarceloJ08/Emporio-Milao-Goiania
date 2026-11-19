@@ -41,3 +41,15 @@ A vitrine, o catálogo ativo e as informações comerciais necessárias à compr
 - Novos cadastros e redefinições exigem senha de pelo menos 12 caracteres na interface. O Supabase Auth continua aplicando seus próprios limites de envio e tentativas; não desativar rate limits nem controles antiabuso.
 - O alerta de proteção contra senhas vazadas ainda precisa ser habilitado em Supabase Dashboard → Authentication → Settings → Password Security. Não declarar a configuração concluída até confirmar no painel.
 - O repositório foi verificado como público. Torná-lo privado no GitHub (Settings → General → Danger Zone → Change visibility) e revisar os colaboradores. O código enviado ao navegador continua sendo inspecionável; regras sigilosas e segredos devem permanecer no banco/funções server-side.
+
+
+## Atualização de novembro de 2026
+- Perfis: SELECT limitado ao próprio usuário ou administrador; UPDATE limitado ao próprio usuário.
+- Pedidos: SELECT limitado ao cliente proprietário, atendente responsável ou administrador; atualização de pedidos limitada ao administrador.
+- Itens de pedidos: leitura herdada da autorização do pedido pai.
+- Carrinhos: leitura, inserção e atualização limitadas ao próprio usuário autenticado.
+- Imagens de produtos: bucket público somente para leitura; inserção, substituição e exclusão restritas a administradores autenticados.
+- Upload de imagens aceita JPG, PNG e WEBP até 8 MB. A função de importação automática exige JWT válido e confirma a permissão administrativa no banco; domínios externos são allowlisted para reduzir risco de SSRF.
+- Formulários de cadastro, redefinição e alteração de senha exigem 12 caracteres, letras maiúsculas e minúsculas, número e símbolo no frontend. **A regra de complexidade no frontend não substitui a política server-side do Supabase Auth**: habilitar também a exigência de 12 caracteres e proteção contra senhas vazadas em Authentication → Settings → Password Security.
+- Endereços das três unidades foram adicionados a `public.store_locations`; a vitrine mostra endereços e links de rota.
+- Não expor chaves `service_role` no navegador. A função de importação usa a chave privilegiada somente em ambiente server-side.
