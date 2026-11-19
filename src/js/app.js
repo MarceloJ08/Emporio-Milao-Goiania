@@ -389,7 +389,7 @@ document.getElementById('profileForm').onsubmit=async e=>{
 };
 document.getElementById('passwordForm').onsubmit=async e=>{
  e.preventDefault();const password=document.getElementById('newPassword').value;
- if(password.length<12){toast('A senha precisa ter pelo menos 12 caracteres.');return;}
+ if(!isStrongPassword(password)){toast('Use pelo menos 12 caracteres, com maiúscula, minúscula, número e símbolo.');return;}
  const {error}=await supa.auth.updateUser({password});
  if(error){toast('Não foi possível atualizar a senha: '+error.message);return;}
  e.currentTarget.reset();toast('Senha atualizada com sucesso.');
