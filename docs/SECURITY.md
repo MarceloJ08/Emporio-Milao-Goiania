@@ -5,7 +5,7 @@ A vitrine, o catálogo ativo e as informações comerciais necessárias à compr
 
 ## Identidades e permissões
 - Cada administrador e atendente deve usar uma conta individual; não compartilhar credenciais.
-- A lista de administradores fica em `private.admin_users`; a lista de atendentes fica em `private.sales_staff`.
+- A lista de administradores fica em `private.admin_users`; a lista de atendentes fica em `private.sales_staff`. Ambas usam RLS em modo FORCE e não concedem acesso direto às roles `anon`/`authenticated`; a gestão ocorre somente por funções privadas autorizadas.
 - A autorização é verificada no backend por funções privadas e RLS, não por esconder botões no navegador.
 - O atendente deve acessar somente os fluxos e registros autorizados; a equipe não deve receber privilégios administrativos.
 - Revogar/bloquear o atendente na allowlist interrompe novas operações após a sessão/token ser renovado; para revogação imediata de sessões já abertas, revogar sessões no Auth também.
