@@ -333,7 +333,20 @@ async function loadMySales(){
  el.innerHTML=(data||[]).map(o=>'<article class="admin-order-card"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+' · '+brl(Number(o.total_amount))+'</b><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+escapeHtml(o.customer_name)+' · '+escapeHtml(o.store_locations?.name||'Unidade')+'</small><p>'+escapeHtml((o.order_items||[]).map(i=>i.quantity+'× '+i.product_name+' · '+brl(Number(i.unit_price))+' un.').join(' | '))+'</p><span class="admin-pill">'+(o.payment_status==='paid'?'Pago':'Pendente')+'</span></article>').join('')||'<p>Nenhuma venda lançada por este usuário.</p>';
 }
 
+function ensureAdminRealtime(){
+ if(adminRealtimeChannel||!supa)return;
+ adminRealtimeChannel=supa.channel('admin-orders-live')
+  .on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>{
+   if(!isAdmin||!document.body.classList.contains('admin-mode'))return;
+   clearTimeout(adminRefreshTimer);
+   adminRefreshTimer=setTimeout(()=>{
+    if(isAdmin&&document.body.classList.contains('admin-mode'))loadAdminDashboard();
+   },450);
+  })
+  .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Canal de atualização ao vivo indisponível:',status);});
+}
 async function loadAdminDashboard(){
+ ensureAdminRealtime();
  const content=document.getElementById('adminContent');if(isAdmin){const identity=document.getElementById('adminIdentity');if(identity)identity.textContent='Sr. Luiz · Proprietário';}content.innerHTML='<p>Carregando dados do negócio...</p>';
  const [summary,or,pr,cr,ir,mr,storesRes,storeInvRes,storeMovesRes,staffRes]=await Promise.all([
   supa.rpc('admin_finance_summary'),
