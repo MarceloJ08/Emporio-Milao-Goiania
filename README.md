@@ -18,3 +18,9 @@ A raiz do projeto deve continuar sendo a raiz de deploy da Vercel: o arquivo `in
 
 ## Segredos
 Nunca commitar arquivos `.env`, tokens, senhas, service-role/secret keys, dumps com dados pessoais ou planilhas de estoque contendo informações internas. O frontend pode conter apenas a chave Supabase publishable/anon, pois ela é pública por definição e deve sempre estar protegida por RLS e grants mínimos.
+
+## Catálogo visual e atendimento
+- `src/css/premium.css`: nova direção de arte da vitrine e das áreas de atendimento.
+- `supabase/functions/centralize-product-images/index.ts`: importação autenticada das fotos de catálogo para o bucket `product-images`, com allowlist de domínios e validação administrativa.
+- O ADM permite editar nome, categoria, preço atual, preço de referência promocional e imagem. Se o preço atual for maior ou igual ao anterior, o preço de referência é removido e somente o preço atual é exibido.
+- O acesso de vendas é uma rota independente em `/?vendas=1`, com busca de produtos e registro integrado ao mesmo fluxo financeiro de pedidos.
