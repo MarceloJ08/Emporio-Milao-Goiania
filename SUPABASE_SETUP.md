@@ -29,7 +29,7 @@
 As migrações aplicadas ao banco são registradas no histórico do Supabase. Os arquivos versionados em `supabase/migrations/` devem ser mantidos alinhados ao banco real. Antes de criar uma migration nova, consultar o histórico remoto e não reaplicar versões existentes.
 
 ## Pendências operacionais
-- Ativar no painel Supabase Auth a opção de proteção contra senhas vazadas (Have I Been Pwned), pois o advisor reportou que está desativada.
+- Ativar a opção `Prevent use of leaked passwords` em Authentication → Sign In / Providers → Email. A documentação do Supabase informa que essa proteção via HaveIBeenPwned está disponível no plano Pro ou superior; se o projeto estiver no Free, reforçar o mínimo de 8 caracteres e exigir maiúsculas, minúsculas, números e símbolos até eventual upgrade. O advisor permanece com aviso enquanto a função não estiver habilitada.
 - Habilitar MFA para as contas administrativas, se disponível no plano/configuração adotada.
 - Tornar o repositório GitHub privado e limitar colaboradores.
 - Cadastrar os e-mails corporativos individuais das assistentes e definir seus limites de desconto no ADM.
