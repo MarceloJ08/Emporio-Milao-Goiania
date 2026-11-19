@@ -10,6 +10,9 @@
 ## Tecnologias
 Frontend estático em HTML, CSS e JavaScript (ES modules). **Não existe código Java neste projeto**; JavaScript é uma linguagem diferente. O backend de dados/autenticação é Supabase (PostgreSQL/Auth/RLS), hospedado e publicado pela Vercel.
 
+## Banco de dados e migrations
+O histórico remoto do Supabase está registrado em `docs/REMOTE_MIGRATION_HISTORY.md`. Há scripts históricos aplicados em produção que ainda precisam ser recuperados para que o banco possa ser reconstruído integralmente do zero; não recrie esses SQLs por suposição.
+
 ## Desenvolvimento
 A raiz do projeto deve continuar sendo a raiz de deploy da Vercel: o arquivo `index.html` importa os ativos por caminhos absolutos em `/src/`. Cada alteração na branch `main` aciona o deploy Git da Vercel.
 
