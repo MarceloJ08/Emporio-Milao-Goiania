@@ -298,6 +298,8 @@ section{scroll-margin-top:82px}
 @media(max-width:420px){.hero-showcase{min-height:485px}.epu-bottle{height:350px;width:84%}.showcase-info{left:17px;right:17px}.showcase-topline,.showcase-bottom{left:17px;right:17px}}
 @media(prefers-reduced-motion:reduce){.epu-bottle{transition:none!important}}
 
+
+body.sales-mode #adminContent>.admin-section{max-width:1100px}body.sales-mode .admin-title-row{display:none}body.sales-mode .admin-footer{display:none}body.sales-mode .admin-topbar{border-bottom:2px solid #b69b71}#saleTotals .admin-kpi strong{font-size:22px;color:#542331}#saleLines .admin-table{min-width:760px}
 </style>
 </head>
 <body>
@@ -340,6 +342,7 @@ const normalizePhone = value => {
 const paymentLabels = {pix:'Pix',dinheiro:'Dinheiro',cartao_entrega:'Cartão na entrega'};
 let currentUser = null;
 let isAdmin = false;
+let isSalesStaff = false;
 async function loadProducts(){
   const {data,error}=await supa.from('products').select('id,name,category,country,price,compare_at_price,description').eq('active',true).order('name');
   if(error){console.error('Falha ao carregar produtos:',error);toast('Não foi possível atualizar o catálogo.');return;}
@@ -373,11 +376,14 @@ async function refreshAuth(){
   const {data:{session}}=await supa.auth.getSession();
   const nextUser=session?.user||null;
   const changed=currentUser?.id!==nextUser?.id;
-  currentUser=nextUser;isAdmin=false;currentProfile=null;
+  currentUser=nextUser;isAdmin=false;isSalesStaff=false;currentProfile=null;
   if(currentUser){
     const {data:adminData,error:adminError}=await supa.rpc('is_admin');
     isAdmin=!adminError && adminData===true;
     if(adminError)console.error('Falha ao verificar permissão ADM:',adminError);
+    const {data:salesData,error:salesError}=await supa.rpc('is_sales_staff');
+    isSalesStaff=!salesError&&salesData===true;
+    if(salesError)console.error('Falha ao verificar permissão de vendas:',salesError);
     const {data:profile,error:profileError}=await supa.from('profiles').select('full_name,email,phone,avatar_url,delivery_address').eq('id',currentUser.id).maybeSingle();
     if(!profileError)currentProfile=profile||{};
     const name=currentProfile?.full_name||currentUser.user_metadata?.full_name||currentUser.email||'cliente';
@@ -507,7 +513,7 @@ function renderCollectionProducts(){
 document.getElementById('collectionSearch').addEventListener('input',renderCollectionProducts);
 document.getElementById('collectionSort').addEventListener('change',renderCollectionProducts);
 document.getElementById('backHome').onclick=()=>closeCollection();
-window.addEventListener('popstate',()=>{if(new URLSearchParams(location.search).get('admin')==='1'){document.getElementById('accountModal').classList.remove('open');document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;if(isAdmin)loadAdminDashboard();}else if(document.body.classList.contains('admin-mode')){document.body.classList.remove('admin-mode');document.getElementById('adminPage').hidden=true;}const route=collectionFromUrl();if(route){currentCollection=route;renderCollection();}else closeCollection(false);});
+window.addEventListener('popstate',()=>{if(new URLSearchParams(location.search).get('admin')==='1'){document.getElementById('accountModal').classList.remove('open');document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;if(isAdmin)loadAdminDashboard();}else if(new URLSearchParams(location.search).get('vendas')==='1'){openSalesPanel(true);}else if(document.body.classList.contains('admin-mode')){document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;}const route=collectionFromUrl();if(route){currentCollection=route;renderCollection();}else closeCollection(false);});
 
 function renderCountries(){let el=document.getElementById('countryList');el.innerHTML=countries.map(c=>`<button class="country-btn ${activeCountry===c[0]?'active':''}" data-country="${c[0]}">${c[0]} <span>↗</span></button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>{activeCountry=b.dataset.country;renderCountries();updateCountry();openCollection({category:'Vinhos',country:activeCountry})})}
 function updateCountry(){let c=countries.find(x=>x[0]===activeCountry);document.getElementById('countryTitle').textContent=c[0];document.getElementById('countryDesc').textContent=c[1]+'. Explore os estilos e peça à equipe os rótulos disponíveis desta origem.';document.getElementById('countryNote').textContent='A seleção completa de vinhos deste país depende da importação do catálogo oficial. A estrutura está preparada para separar tintos, brancos, rosés, espumantes e premium sem misturar países.'}
@@ -586,8 +592,8 @@ async function loadStoreSettings(){
  const hours=document.getElementById('hoursList');if(hours&&data.opening_hours){hours.innerHTML=data.opening_hours.split('|').map(line=>{const i=line.indexOf(':');return i>0?'<div class="hours-row"><span>'+escapeHtml(line.slice(0,i).trim())+'</span><b>'+escapeHtml(line.slice(i+1).trim())+'</b></div>':'<div class="hours-row">'+escapeHtml(line.trim())+'</div>';}).join('');}
 }
 function closeAdminPage(){
- document.body.classList.remove('admin-mode');document.getElementById('adminPage').hidden=true;
- const p=new URLSearchParams(location.search);p.delete('admin');history.pushState({},'',location.pathname+(p.toString()?'?'+p.toString():'')+location.hash);
+ document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;
+ const p=new URLSearchParams(location.search);p.delete('admin');p.delete('vendas');history.pushState({},'',location.pathname+(p.toString()?'?'+p.toString():'')+location.hash);
 }
 async function openAdminPanel(){
  const {data:{session}}=await supa.auth.getSession();
@@ -599,6 +605,68 @@ async function openAdminPanel(){
  const p=new URLSearchParams(location.search);p.set('admin','1');history.pushState({admin:true},'',location.pathname+'?'+p.toString());
  document.getElementById('adminIdentity').textContent=session.user.email||'Administrador';await loadAdminDashboard();
 }
+
+async function openSalesPanel(fromRoute=false){
+ const {data:{session}}=await supa.auth.getSession();
+ if(!session?.user){document.getElementById('accountModal').classList.add('open');toast('Entre com o e-mail autorizado pela administração para lançar vendas.');return;}
+ const {data:allowed,error}=await supa.rpc('is_sales_staff');
+ if(error||allowed!==true){toast('Este e-mail não possui acesso ao lançamento de vendas. Solicite liberação ao administrador.');return;}
+ document.getElementById('accountModal').classList.remove('open');
+ document.body.classList.add('admin-mode','sales-mode');document.getElementById('adminPage').hidden=false;
+ document.getElementById('adminIdentity').textContent=session.user.email||'Atendimento';
+ document.getElementById('adminContent').innerHTML='<p>Preparando o lançamento de vendas...</p>';
+ if(!fromRoute){const p=new URLSearchParams(location.search);p.set('vendas','1');history.pushState({sales:true},'',location.pathname+'?'+p.toString());}
+ await renderSalesWorkspace();
+}
+async function renderSalesWorkspace(){
+ const root=document.getElementById('adminContent');
+ const [storesRes,productsRes]=await Promise.all([
+  supa.from('store_locations').select('id,name').eq('active',true).order('name'),
+  supa.from('products').select('id,name,category,price').eq('active',true).order('name')
+ ]);
+ if(storesRes.error||productsRes.error){root.innerHTML='<div class="admin-empty">Não foi possível carregar unidades e produtos. '+escapeHtml(storesRes.error?.message||productsRes.error?.message||'')+'</div>';return;}
+ const stores=storesRes.data||[],itemsCatalog=productsRes.data||[];
+ if(!stores.length||!itemsCatalog.length){root.innerHTML='<div class="admin-empty">Cadastre unidades e produtos antes de lançar vendas.</div>';return;}
+ let lines=[];
+ root.innerHTML='<section class="admin-section"><div class="eyebrow">ATENDIMENTO DIGITAL</div><h2>Registrar venda assistida</h2><p>Registre aqui os pedidos negociados pelo WhatsApp. O pedido será integrado ao financeiro e a quantidade será reservada no estoque da unidade selecionada.</p><form id="assistedSaleForm" class="admin-form"><div class="admin-form-grid"><label>Nome do cliente<input id="saleCustomer" required minlength="2" maxlength="120" placeholder="Nome completo"></label><label>WhatsApp do cliente<input id="salePhone" required type="tel" placeholder="(62) 99999-9999"></label><label>Endereço de entrega ou retirada<input id="saleAddress" required minlength="8" maxlength="300" placeholder="Endereço completo ou identificação da retirada"></label><label>Unidade de saída<select id="saleStore" required>'+stores.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')+'</select></label><label>Forma de pagamento<select id="salePayment"><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="cartao_entrega">Cartão na entrega</option></select></label><label>Confirmação do pagamento<select id="salePaymentStatus"><option value="pending">Pendente — ainda não recebido</option><option value="paid">Pago — recebido e conferido</option></select></label></div><h3>Produtos da venda</h3><div class="admin-form-grid"><label>Produto<select id="saleProduct">'+itemsCatalog.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+' · '+brl(Number(p.price))+'</option>').join('')+'</select></label><label>Quantidade<input id="saleQty" type="number" min="1" max="500" value="1"></label><label>Preço unitário negociado (R$)<input id="saleUnitPrice" type="number" min="0.01" step="0.01" required></label><div style="display:flex;align-items:end"><button type="button" class="admin-secondary" id="saleAddItem">Adicionar produto</button></div></div><div id="saleLines" class="admin-table-wrap"><p>Nenhum produto adicionado.</p></div><div class="admin-form-grid"><label>Desconto adicional no pedido (R$)<input id="saleOrderDiscount" type="number" min="0" step="0.01" value="0"></label><label>Observações<input id="saleNotes" maxlength="300" placeholder="Detalhes de entrega, negociação..."></label></div><div id="saleTotals" class="admin-kpis"></div><button class="admin-primary" type="submit">Registrar pedido e reservar estoque</button></form></section><section class="admin-section"><h2>Minhas vendas recentes</h2><div id="mySalesList">Carregando vendas...</div></section>';
+ const productSelect=document.getElementById('saleProduct'),priceInput=document.getElementById('saleUnitPrice');
+ const setDefaultPrice=()=>{const opt=productSelect.selectedOptions[0];priceInput.value=Number(opt?.dataset.price||0).toFixed(2);};
+ setDefaultPrice();productSelect.onchange=setDefaultPrice;
+ const renderLines=()=>{
+  const el=document.getElementById('saleLines');
+  if(!lines.length){el.innerHTML='<p>Nenhum produto adicionado.</p>';document.getElementById('saleTotals').innerHTML='';return;}
+  const subtotal=lines.reduce((s,x)=>s+x.listPrice*x.quantity,0),lineDiscount=lines.reduce((s,x)=>s+(x.listPrice-x.unitPrice)*x.quantity,0),extra=Math.max(0,Number(document.getElementById('saleOrderDiscount').value)||0),total=subtotal-lineDiscount-extra;
+  el.innerHTML='<table class="admin-table"><thead><tr><th>Produto</th><th>Qtd.</th><th>Preço tabela</th><th>Preço negociado</th><th>Desconto</th><th>Subtotal</th><th></th></tr></thead><tbody>'+lines.map((x,i)=>'<tr><td>'+escapeHtml(x.name)+'</td><td>'+x.quantity+'</td><td>'+brl(x.listPrice)+'</td><td>'+brl(x.unitPrice)+'</td><td>'+brl((x.listPrice-x.unitPrice)*x.quantity)+'</td><td>'+brl(x.unitPrice*x.quantity)+'</td><td><button type="button" class="admin-secondary" data-remove-sale-line="'+i+'">Remover</button></td></tr>').join('')+'</tbody></table>';
+  document.getElementById('saleTotals').innerHTML='<div class="admin-kpi"><small>Subtotal</small><strong>'+brl(subtotal)+'</strong></div><div class="admin-kpi"><small>Descontos</small><strong>'+brl(lineDiscount+extra)+'</strong></div><div class="admin-kpi"><small>Total do pedido</small><strong>'+brl(total)+'</strong></div>';
+  el.querySelectorAll('[data-remove-sale-line]').forEach(b=>b.onclick=()=>{lines.splice(Number(b.dataset.removeSaleLine),1);renderLines();});
+ };
+ document.getElementById('saleAddItem').onclick=()=>{
+  const id=productSelect.value,p=itemsCatalog.find(x=>x.id===id),quantity=Number(document.getElementById('saleQty').value),unitPrice=Number(priceInput.value);
+  if(!p||!Number.isInteger(quantity)||quantity<1||quantity>500||!Number.isFinite(unitPrice)||unitPrice<=0||unitPrice>Number(p.price)){toast('Confira a quantidade e o preço negociado. O preço não pode superar o preço cadastrado.');return;}
+  const found=lines.find(x=>x.id===id);
+  if(found){found.quantity+=quantity;found.unitPrice=unitPrice;}else lines.push({id,name:p.name,quantity,unitPrice,listPrice:Number(p.price)});
+  renderLines();
+ };
+ document.getElementById('saleOrderDiscount').oninput=renderLines;
+ document.getElementById('assistedSaleForm').onsubmit=async e=>{
+  e.preventDefault();if(!lines.length){toast('Adicione pelo menos um produto.');return;}
+  const subtotal=lines.reduce((s,x)=>s+x.listPrice*x.quantity,0),lineDiscount=lines.reduce((s,x)=>s+(x.listPrice-x.unitPrice)*x.quantity,0),extra=Number(document.getElementById('saleOrderDiscount').value)||0;
+  if(extra<0||extra+lineDiscount>subtotal){toast('O desconto não pode superar o subtotal.');return;}
+  const button=e.currentTarget.querySelector('button[type=submit]');button.disabled=true;button.textContent='Registrando venda...';
+  const {data,error}=await supa.rpc('create_assisted_sale',{p_customer_name:document.getElementById('saleCustomer').value.trim(),p_customer_phone:document.getElementById('salePhone').value.trim(),p_delivery_address:document.getElementById('saleAddress').value.trim(),p_payment_method:document.getElementById('salePayment').value,p_payment_status:document.getElementById('salePaymentStatus').value,p_store_id:document.getElementById('saleStore').value,p_items:lines.map(x=>({id:x.id,quantity:x.quantity,unit_price:x.unitPrice})),p_order_discount:extra,p_notes:document.getElementById('saleNotes').value.trim()||null});
+  button.disabled=false;button.textContent='Registrar pedido e reservar estoque';
+  if(error){toast('Venda não registrada: '+error.message);return;}
+  toast('Venda registrada! Pedido #'+String(data).slice(0,8)+'.');lines=[];document.getElementById('assistedSaleForm').reset();setDefaultPrice();renderLines();await loadMySales();
+ };
+ await loadMySales();
+}
+async function loadMySales(){
+ const el=document.getElementById('mySalesList');if(!el)return;
+ const {data,error}=await supa.from('orders').select('id,customer_name,total_amount,payment_status,created_at,store_locations(name),order_items(product_name,quantity,unit_price,discount_amount)').eq('seller_user_id',currentUser.id).order('created_at',{ascending:false}).limit(30);
+ if(error){el.textContent='Não foi possível carregar as vendas recentes.';return;}
+ el.innerHTML=(data||[]).map(o=>'<article class="admin-order-card"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+' · '+brl(Number(o.total_amount))+'</b><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+escapeHtml(o.customer_name)+' · '+escapeHtml(o.store_locations?.name||'Unidade')+'</small><p>'+escapeHtml((o.order_items||[]).map(i=>i.quantity+'× '+i.product_name+' · '+brl(Number(i.unit_price))+' un.').join(' | '))+'</p><span class="admin-pill">'+(o.payment_status==='paid'?'Pago':'Pendente')+'</span></article>').join('')||'<p>Nenhuma venda lançada por este usuário.</p>';
+}
+
 async function loadAdminDashboard(){
  const content=document.getElementById('adminContent');content.innerHTML='<p>Carregando dados do negócio...</p>';
  const [summary,or,pr,cr,ir,mr]=await Promise.all([
@@ -645,6 +713,7 @@ async function loadAdminDashboard(){
 }
 document.getElementById('adminOpenBtn').onclick=openAdminPanel;
 document.getElementById('adminBackToStore').onclick=closeAdminPage;
+document.getElementById('adminBackToStore').textContent='← Voltar';
 document.getElementById('adminRefresh').onclick=loadAdminDashboard;
 
 document.getElementById('settingsToggleBtn').onclick=()=>{const box=document.getElementById('accountSettings');box.style.display=box.style.display==='none'?'block':'none';};
@@ -686,6 +755,7 @@ async function initSupabase(){
     Promise.resolve().then(()=>refreshAuth()).catch(error=>console.error('Falha ao atualizar sessão:',error));
   });
   await refreshAuth();
+  if(new URLSearchParams(location.search).get('vendas')==='1'){await openSalesPanel(true);return;}
   if(new URLSearchParams(location.search).get('admin')==='1'){if(isAdmin){document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;await loadAdminDashboard();}else{history.replaceState({},'',location.pathname);document.getElementById('accountModal').classList.add('open');toast('Entre com uma conta autorizada para acessar o ADM.');}}
 }
 
