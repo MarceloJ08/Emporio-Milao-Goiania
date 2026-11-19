@@ -180,3 +180,26 @@ header{background:rgba(249,247,242,.96);border-bottom:1px solid rgba(58,44,34,.1
 .admin-welcome-rule{width:42px;height:2px;margin:23px auto 0;background:#b49a76}
 @media(prefers-reduced-motion:reduce){.admin-welcome-notice,.admin-welcome-card{transition:none}}
 
+
+
+/* Navegação por áreas da central administrativa */
+.admin-kpis{grid-template-columns:repeat(auto-fit,minmax(185px,1fr))}
+.admin-area-selector{margin:24px 0 18px;padding:22px 24px;background:#f8f4ed;border:1px solid #e2d6c5}
+.admin-area-selector-heading{display:flex;justify-content:space-between;align-items:end;margin-bottom:15px}
+.admin-area-selector-heading span{font-size:9px;font-weight:800;letter-spacing:2px;color:#987b56}
+.admin-area-selector-heading h2{font:25px 'DM Serif Display';font-weight:500;color:#492831;margin:5px 0}
+.admin-area-selector-heading p{font-size:12px;color:#817467;margin:0}
+.admin-area-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.admin-area-button{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:78px;padding:15px 16px;text-align:left;background:#fffdf8;border:1px solid #e2d7c8;color:#493b32;cursor:pointer;transition:background .18s,border-color .18s,transform .18s}
+.admin-area-button:hover{border-color:#a98b65;transform:translateY(-1px)}
+.admin-area-button[aria-expanded="true"]{background:#542331;border-color:#542331;color:#fff8ef}
+.admin-area-button span,.admin-area-button b,.admin-area-button small{display:block}
+.admin-area-button b{font-size:13px;font-weight:700}
+.admin-area-button small{margin-top:5px;font-size:10px;line-height:1.45;color:#897b6d}
+.admin-area-button[aria-expanded="true"] small{color:#e4d4ce}
+.admin-area-button i{font-style:normal;font-size:18px;color:#a58a64}
+.admin-area-button[aria-expanded="true"] i{color:#d5b98e}
+.admin-area-panel[hidden]{display:none!important}
+.admin-area-panel>.admin-section{margin:0 0 18px}
+@media(max-width:850px){.admin-area-buttons{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.admin-area-selector{padding:17px 14px}.admin-area-buttons{grid-template-columns:1fr}.admin-area-button{min-height:68px}.admin-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
