@@ -20,3 +20,20 @@ values
 ('vinho-rocas-de-sena','Vinho Tinto Rocas de Seña','Vinhos Tintos','Chile',249.90,399.90,'Vinho tinto chileno do Vale de Aconcágua, elegante e estruturado, com frutas negras, especiarias e notas de carvalho.',true),
 ('vinho-tua-rita-redigaffi-2015','Vinho Tinto Tua Rita Redigaffi 2015','Vinhos Tintos','Itália',2599.90,2990.90,'Vinho tinto toscano elaborado exclusivamente com Merlot, encorpado, complexo e de longa persistência.',true)
 on conflict (id) do nothing;
+
+update public.products set image_url=case id
+when 'vinho-foye-reserva-chardonnay' then 'https://diawine.agilecdn.com.br/13207_1.jpg'
+when 'espumante-terranova-brut' then 'https://images.tcdn.com.br/img/img_prod/1199358/espumante_miolo_terranova_brut_750ml_547_1_41c5a20d2d6e40660dfdb3ab3e65ac0c.jpg'
+when 'espumante-terranova-moscatel' then 'https://www.vinhosevinhos.com/media/catalog/product/cache/f551083cd20de7ac8cf7d25adc91480d/t/e/terranova_moscatel_750ml-nova_embalagem_1.jpg'
+when 'vinho-santa-rita-120-pinot-grigio' then 'https://static.paodeacucar.com/img/uploads/1/886/22316886.jpg'
+when 'vinho-riccitelli-the-party-malbec' then 'https://www.winedispensary.com/cdn/shop/files/MatiasRiccitelli_TheParty_Malbec_UcoValley_Argentina.png?v=1751847222'
+when 'vinho-baron-philippe-sauvignon-blanc' then 'https://images.tcdn.com.br/img/img_prod/1406013/baron_philippe_de_rothschild_sauvignon_blanc_2024_1_20260220104204_c4c90dd0d671.png'
+when 'vinho-alfacinha-branco' then 'https://carrefourbr.vtexassets.com/arquivos/ids/189735267/image-0.jpg?v=638796555729070000'
+when 'vinho-chac-chac-reserva-chardonnay' then 'https://diawine.agilecdn.com.br/21449_1.jpg?v=82-845148806'
+when 'vinho-las-perdices-gewurztraminer' then 'https://images.tcdn.com.br/img/img_prod/712359/las_perdices_gewurztraminer_750ml_argentina_7001_1_8acfff528421fd1c84b85ddf9d1f9a7c.jpg'
+when 'vinho-la-croisade-grand-reserve-chardonnay' then 'https://naracellar.com/img_wine/upload/wine/3666989372_kAV1Y0mP_d6d0b3e3b77d23ff8a6d0e7608c812d4e5716da2.jpg'
+when 'vinho-burmester-ruby' then 'https://perfectewijn.nl/cdn/shop/files/burmester-ruby-port_7688.webp?v=1770110606&width=480'
+when 'vinho-rocas-de-sena' then 'https://www.perfectcellar.com/cdn/shop/files/SenaRocasdeSena2021.png?v=1770378200&width=1946'
+when 'vinho-tua-rita-redigaffi-2015' then 'https://peak-wines.com/cdn/shop/files/Tuarita_redigaffi_2015_front.jpg?v=1764013512&width=2048'
+end, image_alt=name
+where id in ('vinho-foye-reserva-chardonnay','espumante-terranova-brut','espumante-terranova-moscatel','vinho-santa-rita-120-pinot-grigio','vinho-riccitelli-the-party-malbec','vinho-baron-philippe-sauvignon-blanc','vinho-alfacinha-branco','vinho-chac-chac-reserva-chardonnay','vinho-las-perdices-gewurztraminer','vinho-la-croisade-grand-reserve-chardonnay','vinho-burmester-ruby','vinho-rocas-de-sena','vinho-tua-rita-redigaffi-2015');
