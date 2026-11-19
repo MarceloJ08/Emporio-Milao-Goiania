@@ -40,6 +40,21 @@ async function persistCart(){
     if(error)console.warn('Não foi possível sincronizar a sacola:',error);
   }
 }
+function showAdminWelcomeNotification(){
+  const key='milao_admin_welcome_'+(currentUser?.id||'');
+  try{if(sessionStorage.getItem(key))return;sessionStorage.setItem(key,'1');}catch(_){}
+  let layer=document.getElementById('adminWelcomeNotice');
+  if(!layer){
+    layer=document.createElement('div');layer.id='adminWelcomeNotice';layer.className='admin-welcome-notice';
+    layer.setAttribute('role','dialog');layer.setAttribute('aria-modal','true');layer.setAttribute('aria-labelledby','adminWelcomeTitle');
+    layer.innerHTML='<div class="admin-welcome-card"><button class="admin-welcome-close" type="button" aria-label="Fechar aviso">×</button><div class="admin-welcome-mark">M</div><div class="admin-welcome-kicker">EMPÓRIO MILÃO · ÁREA DO PROPRIETÁRIO</div><h2 id="adminWelcomeTitle">Seja bem-vindo, Sr. Luiz.</h2><p>Sua empresa, sua visão. Vamos em frente.</p><div class="admin-welcome-rule"></div></div>';
+    document.body.appendChild(layer);
+    layer.querySelector('.admin-welcome-close').addEventListener('click',()=>layer.classList.remove('is-visible'));
+    layer.addEventListener('click',e=>{if(e.target===layer)layer.classList.remove('is-visible');});
+  }
+  requestAnimationFrame(()=>layer.classList.add('is-visible'));
+  window.setTimeout(()=>layer.classList.remove('is-visible'),5600);
+}
 async function refreshAuth(){
   const {data:{session}}=await supa.auth.getSession();
   const nextUser=session?.user||null;
@@ -54,6 +69,7 @@ async function refreshAuth(){
     if(salesError)console.error('Falha ao verificar permissão de vendas:',salesError);
     const {data:profile,error:profileError}=await supa.from('profiles').select('full_name,email,phone,avatar_url,delivery_address').eq('id',currentUser.id).maybeSingle();
     if(!profileError)currentProfile=profile||{};
+    if(changed&&isAdmin)showAdminWelcomeNotification();
     const name=currentProfile?.full_name||currentUser.user_metadata?.full_name||currentUser.email||'cliente';
     document.getElementById('accountStatus').textContent='Olá, '+name+'. Seus dados e pedidos estão vinculados a esta conta.';document.getElementById('accountBtn').textContent='Minha conta';
     document.getElementById('accountLogin').style.display='none';
@@ -417,6 +433,20 @@ async function initSupabase(){
   if(new URLSearchParams(location.search).get('vendas')==='1'){await openSalesPanel(true);return;}
   if(new URLSearchParams(location.search).get('admin')==='1'){if(isAdmin){document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;await loadAdminDashboard();}else{history.replaceState({},'',location.pathname);document.getElementById('accountModal').classList.add('open');toast('Entre com uma conta autorizada para acessar o ADM.');}}
 }
+
+
+/* Aviso de boas-vindas do proprietário: centralizado, discreto e temporário. */
+.admin-welcome-notice{position:fixed;inset:0;z-index:10050;display:grid;place-items:center;padding:24px;background:rgba(25,23,21,.34);backdrop-filter:blur(5px);opacity:0;visibility:hidden;transition:opacity .28s ease,visibility .28s ease}
+.admin-welcome-notice.is-visible{opacity:1;visibility:visible}
+.admin-welcome-card{position:relative;width:min(440px,100%);padding:38px 34px 30px;text-align:center;background:#fbfaf7;border:1px solid #e9e2d8;border-radius:20px;box-shadow:0 24px 80px rgba(24,20,16,.2);transform:translateY(12px) scale(.985);transition:transform .32s cubic-bezier(.2,.8,.2,1)}
+.admin-welcome-notice.is-visible .admin-welcome-card{transform:translateY(0) scale(1)}
+.admin-welcome-close{position:absolute;top:12px;right:15px;width:34px;height:34px;border:0;border-radius:50%;background:#f0ede7;color:#77716a;font-size:23px;line-height:1;cursor:pointer}
+.admin-welcome-mark{display:grid;place-items:center;width:48px;height:48px;margin:0 auto 19px;border-radius:50%;background:#eee8df;color:#8b704e;font-family:Georgia,serif;font-size:25px}
+.admin-welcome-kicker{margin-bottom:12px;color:#9a805f;font-size:9px;font-weight:700;letter-spacing:1.7px}
+.admin-welcome-card h2{margin:0;color:#292724;font-family:Georgia,serif;font-size:clamp(23px,5vw,29px);font-weight:500;letter-spacing:-.5px}
+.admin-welcome-card p{margin:11px 0 0;color:#716b63;font-size:14px;line-height:1.6}
+.admin-welcome-rule{width:42px;height:2px;margin:23px auto 0;background:#b49a76}
+@media(prefers-reduced-motion:reduce){.admin-welcome-notice,.admin-welcome-card{transition:none}}
 
 /* Interação frontal limitada: a fotografia permanece sempre voltada ao visitante. */
 const epuStage=document.getElementById('epuStage');
