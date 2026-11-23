@@ -1,12 +1,20 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const required = ['index.html','src/js/app.js','src/css/styles.css','src/css/premium.css','vercel.json','enterprise/ARCHITECTURE.md','enterprise/SECURITY.md','enterprise/TESTING.md'];
+const required = ['index.html','src/js/app.js','src/css/styles.css','src/css/premium.css','vercel.json','enterprise/ARCHITECTURE.md','enterprise/SECURITY.md','enterprise/TESTING.md','supabase/migrations/20261123190000_shared_sales_assistant_identity.sql'];
 for (const file of required) {
   if (!existsSync(file)) throw new Error('Missing required file: '+file);
 }
 const js = spawnSync(process.execPath,['--check','src/js/app.js'],{encoding:'utf8'});
 if (js.status !== 0) throw new Error(js.stderr || 'JS syntax check failed');
+const app=readFileSync('src/js/app.js','utf8');
+for (const token of ['saleAssistant','Gabriela','Tawane','Victoria','create_assisted_sale_for_assistant','seller_name']) {
+ if (!app.includes(token)) throw new Error('Online sales assistant feature missing: '+token);
+}
+const migration=readFileSync('supabase/migrations/20261123190000_shared_sales_assistant_identity.sql','utf8');
+for (const token of ['private.is_sales_staff()','Gabriela','Tawane','Victoria','seller_name','grant execute']) {
+ if (!migration.toLowerCase().includes(token.toLowerCase())) throw new Error('Assistant attribution migration missing: '+token);
+}
 const html=readFileSync('index.html','utf8');
 if (!html.includes('<html lang="pt-BR">')) throw new Error('HTML language metadata missing');
 if (!html.includes('/src/css/styles.css') || !html.includes('/src/js/app.js')) throw new Error('Expected frontend assets not referenced');
