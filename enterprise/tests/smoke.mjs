@@ -11,6 +11,9 @@ const app=readFileSync('src/js/app.js','utf8');
 for (const token of ['saleAssistant','Gabriela','Tawane','Victoria','create_assisted_sale_for_assistant','seller_name']) {
  if (!app.includes(token)) throw new Error('Online sales assistant feature missing: '+token);
 }
+for (const token of ['<select id="pCategory" required>','<select id="pCountry">','value="Espumantes"','value="Sucos"','value="Vinho do Porto"','value="Vinhos Brancos"','value="Vinhos Tintos"','value="Argentina"','value="Brasil"','value="Chile"','value="Coreia do Sul"','value="França"','value="Itália"','value="Portugal"']) {
+ if (!app.includes(token)) throw new Error('Product catalog dropdown option missing: '+token);
+}
 const migration=readFileSync('supabase/migrations/20261123190000_shared_sales_assistant_identity.sql','utf8');
 for (const token of ['private.is_sales_staff()','Gabriela','Tawane','Victoria','seller_name','grant execute']) {
  if (!migration.toLowerCase().includes(token.toLowerCase())) throw new Error('Assistant attribution migration missing: '+token);
