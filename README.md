@@ -24,3 +24,17 @@ Nunca commitar arquivos `.env`, tokens, senhas, service-role/secret keys, dumps 
 - `supabase/functions/centralize-product-images/index.ts`: importação autenticada das fotos de catálogo para o bucket `product-images`, com allowlist de domínios e validação administrativa.
 - O ADM permite editar nome, categoria, preço atual, preço de referência promocional e imagem. Se o preço atual for maior ou igual ao anterior, o preço de referência é removido e somente o preço atual é exibido.
 - O acesso de vendas é uma rota independente em `/?vendas=1`, com busca de produtos e registro integrado ao mesmo fluxo financeiro de pedidos.
+
+
+## Evolução empresarial e validação
+
+A documentação incremental da arquitetura, responsabilidades tecnológicas, segurança e validação está centralizada em [`enterprise/`](enterprise/README.md).
+
+- [Arquitetura](enterprise/ARCHITECTURE.md)
+- [Segurança](enterprise/SECURITY.md)
+- [Responsabilidades por tecnologia](enterprise/LANGUAGE_ROLES.md)
+- [Domínios de negócio](enterprise/domains/README.md)
+- [Plano de testes](enterprise/TESTING.md)
+- [Status da revisão](enterprise/REVIEW_STATUS.md)
+
+Esta organização está na branch `architecture/enterprise-modular` e não altera a branch `main`.
