@@ -1,50 +1,50 @@
 /* Empório Milão — paleta renovada: verde profundo, coral e marfim */
 :root{
-  --ink:#1b2d29;
-  --forest:#173f39;
-  --moss:#4f8878;
-  --gold:#e18a69;
-  --paper:#f2f6f2;
-  --white:#fffdf8;
-  --muted:#687a73;
-  --line:#d9e5de;
+  --ink:#302322;
+  --forest:#4b2029;
+  --moss:#8c6a4d;
+  --gold:#c7a15a;
+  --paper:#f5f0e8;
+  --white:#fffaf2;
+  --muted:#786d66;
+  --line:#e8dccb;
   --red:#9b4d4b;
-  --wine:#244e47;
+  --wine:#4b2029;
 }
-body{background:#f4f7f3;color:#20342f}
-.announcement{background:#17463f;color:#f6fbf7}
-.announcement span{color:#f0a080}
+body{background:#f4f7f3;color:#302322}
+.announcement{background:#35191f;color:#fffaf2}
+.announcement span{color:#d7b56d}
 header{background:rgba(250,252,249,.97);border-bottom:1px solid #dce8e1}
-.logo{color:#1b433b}
-.brand-mark{color:#287467}
-.logotype em{color:#bd7054}
-.links a{color:#425c54}
-.links a:hover{color:#c56e51}
+.logo{color:#4b2029}
+.brand-mark{color:#8c6a4d}
+.logotype em{color:#b38b4d}
+.links a{color:#67544d}
+.links a:hover{color:#9a743f}
 .iconbtn,.cartbtn{border-radius:7px}
-.iconbtn{border-color:#cbdcd2;color:#28564b}
-.cartbtn{background:#e58d6b;border-color:#e58d6b;color:#203c35}
-.count{background:#17463f;color:#fff}
-.benefit-strip{background:#e8f1eb;border-color:#d6e4dc}
-.benefit-icon{color:#34796b}
-.benefit-strip b{color:#244c42}
-.benefit-strip small{color:#687b73}
-.hero{background-color:#173d38}
-.hero-shade{background:linear-gradient(90deg,rgba(17,48,43,.95) 0%,rgba(23,63,57,.82) 43%,rgba(23,63,57,.28) 100%),linear-gradient(0deg,rgba(17,48,43,.48),transparent 45%)}
-.kicker,.editorial-number,.editorial-caption{color:#f0ad8d}
-.kicker-dot{background:#e58d6b;box-shadow:0 0 0 5px rgba(229,141,107,.16)}
-.hero-overline{color:#d9e9df}
-.hero h1 i,.hero-editorial h2 em{color:#f0a080}
-.hero .btn.primary{background:#e58d6b;color:#203c35;border-color:#e58d6b}
-.hero .btn.ghost{border-color:#b9d6ca;color:#fffdf8}
-.hero-proof,.hero-editorial>a{color:#f0ad8d}
-.proof-line,.editorial-rule{background:#e58d6b}
-.hero-bottomline{color:#d4e7dc}
-.manifesto{background:#e8f1eb;color:#1e453c;border-color:#d6e4dc}
-.manifesto-item{border-color:#cfddd4}
-.manifesto-item .num{color:#c56e51}
+.iconbtn{border-color:#e1d2be;color:#5b302f}
+.cartbtn{background:#c7a15a;border-color:#c7a15a;color:#302322}
+.count{background:#35191f;color:#fff}
+.benefit-strip{background:#e8f1eb;border-color:#e8dccb}
+.benefit-icon{color:#8c6a4d}
+.benefit-strip b{color:#4b2029}
+.benefit-strip small{color:#786d66}
+.hero{background-color:#35191f}
+.hero-shade{background:linear-gradient(90deg,rgba(53,25,31,.95) 0%,rgba(75,32,41,.82) 43%,rgba(75,32,41,.28) 100%),linear-gradient(0deg,rgba(53,25,31,.48),transparent 45%)}
+.kicker,.editorial-number,.editorial-caption{color:#d7b56d}
+.kicker-dot{background:#c7a15a;box-shadow:0 0 0 5px rgba(229,141,107,.16)}
+.hero-overline{color:#eadfcf}
+.hero h1 i,.hero-editorial h2 em{color:#d7b56d}
+.hero .btn.primary{background:#c7a15a;color:#302322;border-color:#c7a15a}
+.hero .btn.ghost{border-color:#b9d6ca;color:#fffaf2}
+.hero-proof,.hero-editorial>a{color:#d7b56d}
+.proof-line,.editorial-rule{background:#c7a15a}
+.hero-bottomline{color:#eadfcf}
+.manifesto{background:#e8f1eb;color:#4b2029;border-color:#e8dccb}
+.manifesto-item{border-color:#e8dccb}
+.manifesto-item .num{color:#9a743f}
 .manifesto-item small{color:#667c73}
-.btn.primary,.primary{background:#e58d6b;color:#203c35}
-button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid rgba(48,132,113,.35);outline-offset:2px}
+.btn.primary,.primary{background:#c7a15a;color:#302322}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid rgba(173,137,75,.28);outline-offset:2px}
 @media(max-width:760px){
   .benefit-strip{background:#e8f1eb}
   .nav{background:rgba(250,252,249,.97)}
