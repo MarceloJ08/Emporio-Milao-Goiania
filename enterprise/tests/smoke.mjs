@@ -80,8 +80,16 @@ for (const key of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy
 }
 
 const brand = readFileSync('src/css/brand-refresh.css', 'utf8');
-for (const token of ['--forest:#173f39', '--gold:#e18a69', '.hero']) {
+for (const token of ['--forest:#4b2029', '--gold:#c7a15a', '.hero']) {
   if (!brand.includes(token)) throw new Error('Brand refresh palette missing: ' + token);
 }
+
+
+const productForm = readFileSync('src/js/app.js', 'utf8');
+for (const token of ['product-image-editor', 'pImagePreview', 'pDiscount', 'refreshProductDiscount', '<s>']) {
+  if (!productForm.includes(token)) throw new Error('Product entry panel enhancement missing: ' + token);
+}
+if (!existsSync('assets/logo-emporio-milao.jpg')) throw new Error('Original Emporio Milao logo asset missing');
+if (!html.includes('/assets/logo-emporio-milao.jpg')) throw new Error('Original logo not referenced by site header');
 
 console.log('Smoke checks passed: structure, JS syntax, assistant UI, RPC/ADM wiring, catalog dropdowns, brand palette and security headers.');
