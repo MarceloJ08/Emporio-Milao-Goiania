@@ -1,3 +1,12 @@
+-- Add the two requested stock locations without changing existing branch records.
+insert into public.store_locations (name, active)
+select requested.name, true
+from (values ('Galpão'), ('Celina Park')) as requested(name)
+where not exists (
+  select 1 from public.store_locations existing
+  where lower(existing.name) = lower(requested.name)
+);
+
 -- Shared sales login with per-sale assistant attribution.
 -- Each sale remains owned by the authenticated, authorized sales account.
 -- The selected assistant is validated server-side and snapshotted on the order.
