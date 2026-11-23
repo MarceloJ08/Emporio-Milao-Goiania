@@ -207,3 +207,63 @@ header{background:rgba(249,247,242,.96);border-bottom:1px solid rgba(58,44,34,.1
 .admin-discount-policy-note{margin:0 0 16px;padding:16px 18px;background:#f1e9dc;border-left:3px solid #a98b65;color:#493a30}
 .admin-discount-policy-note b{display:block;font-size:12px;margin-bottom:5px}
 .admin-discount-policy-note p{font-size:11px;line-height:1.6;color:#76695c;margin:0}
+
+
+/* Central de vendas online — interface de operação */
+.sales-mode{background:#f3f6f4;color:#1f302d}
+.sales-mode .admin-page{background:#f3f6f4}
+.sales-mode .admin-topbar{background:#153c38;border-bottom:3px solid #e28a67}
+.sales-mode .admin-seal{background:#e28a67;color:#183b37}
+.sales-mode .admin-title-row .eyebrow{color:#c16c4e}
+.sales-mode .admin-title-row h1{color:#183b37}
+.sales-mode .admin-title-row p{color:#62736e}
+.sales-mode .admin-section{border:1px solid #dce7e1;background:#fff;border-radius:16px;box-shadow:0 12px 34px rgba(27,62,53,.06);padding:26px}
+.sales-mode .admin-section h2{color:#183b37}
+.sales-mode #assistedSaleForm{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(290px,.8fr);gap:22px;align-items:start}
+.sales-mode #assistedSaleForm>.admin-form-grid:first-child{grid-column:1/-1}
+.sales-workspace-main{grid-column:1;min-width:0}
+.sales-workspace-main>h3{font-size:17px;color:#1d5149;margin:4px 0 16px}
+.sales-workspace-main .admin-form-grid{grid-template-columns:minmax(0,1.6fr) minmax(90px,.5fr) minmax(150px,.7fr) auto;align-items:end}
+.sales-workspace-summary{grid-column:2;grid-row:2 / span 4;position:sticky;top:18px;padding:20px;background:#edf5f1;border:1px solid #d4e4dc;border-radius:14px}
+.sales-summary-heading{display:flex;flex-direction:column;gap:5px;margin-bottom:16px}
+.sales-summary-heading span{font-size:10px;letter-spacing:.16em;font-weight:800;color:#1d665c}
+.sales-summary-heading small{font-size:11px;color:#71827b}
+.sales-workspace-summary .admin-form-grid{display:grid;grid-template-columns:1fr;gap:12px}
+.sales-workspace-summary .admin-kpis{display:grid;grid-template-columns:1fr;gap:9px;margin:16px 0}
+.sales-workspace-summary .admin-kpi{background:#fff;border:1px solid #dce9e2;border-radius:10px;padding:13px}
+.sales-workspace-summary .admin-kpi strong{color:#15584f;font-size:22px}
+.sales-workspace-summary .admin-primary{width:100%;background:#176b60;border-color:#176b60}
+.sales-mode .admin-secondary{border:1px solid #b9d3c8;background:#fff;color:#18594f;border-radius:9px}
+.sales-mode .admin-secondary:hover{background:#e2f0e9}
+.sales-mode input,.sales-mode select,.sales-mode textarea{border:1px solid #d4e1da;border-radius:9px;background:#fbfdfb}
+.sales-mode input:focus,.sales-mode select:focus,.sales-mode textarea:focus{outline:2px solid rgba(36,132,112,.18);border-color:#248470}
+.sales-mode .admin-table{border-radius:10px;overflow:hidden}
+.sales-mode .admin-table thead{background:#eaf3ee}
+.sales-mode .admin-table th{color:#28564d}
+.sales-mode .admin-order-card{border:1px solid #dce7e1;border-radius:12px;background:#fff}
+.sales-mode .admin-primary{background:#176b60;border-color:#176b60}
+@media(max-width:900px){.sales-mode #assistedSaleForm{grid-template-columns:1fr}.sales-mode #assistedSaleForm>.admin-form-grid:first-child,.sales-workspace-main,.sales-workspace-summary{grid-column:1;grid-row:auto}.sales-workspace-summary{position:static}.sales-workspace-main .admin-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.sales-mode .admin-section{padding:17px}.sales-workspace-main .admin-form-grid{grid-template-columns:1fr}.sales-workspace-summary .admin-form-grid{grid-template-columns:1fr}}
+
+/* Cadastro de produtos: campos organizados e fotografia em área central */
+.product-price-editor{margin:18px 0;padding:20px;background:#fbf7ef;border:1px solid #eadfcf;border-radius:14px}
+.product-price-editor-heading,.product-image-editor-copy{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.product-price-editor-heading b,.product-image-editor-copy b{font-size:15px;color:#4b2029}
+.product-price-editor-heading small,.product-image-editor-copy small,.product-discount-hint{font-size:12px;color:#796b60}
+.product-price-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.product-price-fields label,.product-image-inputs label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:700;color:#4b3532}
+.product-price-fields input{width:100%}
+#pDiscount{background:#f1e7d3;color:#7b5422;font-weight:800;text-align:center}
+.product-discount-hint{margin:10px 0 0}
+.product-image-editor{margin:18px 0;padding:22px;border:1px dashed #cbb58c;border-radius:16px;background:#fffaf2;text-align:center}
+.product-image-editor-copy{align-items:center}
+.product-image-preview-wrap{width:190px;height:190px;margin:0 auto 16px;display:grid;place-items:center;border-radius:14px;background:#f3eee5;border:1px solid #e7ddcf;overflow:hidden;color:#8b7a69;font-size:12px}
+.product-image-preview-wrap img{width:100%;height:100%;object-fit:contain;padding:8px}
+.product-image-preview-wrap img[hidden],#pImagePlaceholder[hidden]{display:none}
+.product-image-inputs{display:grid;grid-template-columns:1fr 1fr;gap:14px;max-width:640px;margin:0 auto;text-align:left}
+.product-image-inputs input{width:100%}
+.product-main-fields .product-description-field{grid-column:1/-1}
+.admin-product-cell .admin-old-price s{color:#8d4b4e}
+.brand-mark{width:48px;height:48px;display:grid;place-items:center;overflow:hidden;border-radius:50%;background:#35191f;border:1px solid #c7a15a;box-shadow:0 2px 10px rgba(53,25,31,.16)}
+.brand-mark img{width:100%;height:100%;object-fit:cover;display:block}
+@media(max-width:650px){.product-price-fields{grid-template-columns:1fr}.product-image-inputs{grid-template-columns:1fr}.product-image-preview-wrap{width:160px;height:160px}}

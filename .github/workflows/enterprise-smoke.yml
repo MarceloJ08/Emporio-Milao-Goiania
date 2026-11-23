@@ -1,7 +1,7 @@
 name: Enterprise smoke validation
 on:
   push:
-    branches: [architecture/enterprise-modular]
+    branches: [architecture/enterprise-modular, feature/online-assistant-sales-workspace]
   pull_request:
     branches: [architecture/enterprise-modular]
 permissions:
