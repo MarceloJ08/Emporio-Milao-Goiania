@@ -6,6 +6,7 @@ const required = [
   'src/js/app.js',
   'src/css/styles.css',
   'src/css/premium.css',
+  'src/css/brand-refresh.css',
   'vercel.json',
   'enterprise/ARCHITECTURE.md',
   'enterprise/SECURITY.md',
@@ -68,7 +69,7 @@ for (const token of ['.sales-mode #assistedSaleForm', 'sales-workspace-summary']
 
 const html = readFileSync('index.html', 'utf8');
 if (!html.includes('<html lang="pt-BR">')) throw new Error('HTML language metadata missing');
-if (!html.includes('/src/css/styles.css') || !html.includes('/src/js/app.js')) {
+if (!html.includes('/src/css/styles.css') || !html.includes('/src/css/brand-refresh.css') || !html.includes('/src/js/app.js')) {
   throw new Error('Expected frontend assets not referenced');
 }
 
@@ -78,4 +79,9 @@ for (const key of ['X-Content-Type-Options', 'X-Frame-Options', 'Referrer-Policy
   if (!allHeaders.some(h => h.key === key)) throw new Error('Missing security header: ' + key);
 }
 
-console.log('Smoke checks passed: structure, JS syntax, assistant UI, RPC/ADM wiring, catalog dropdowns and security headers.');
+const brand = readFileSync('src/css/brand-refresh.css', 'utf8');
+for (const token of ['--forest:#173f39', '--gold:#e18a69', '.sales-mode']) {
+  if (!brand.includes(token)) throw new Error('Brand refresh palette missing: ' + token);
+}
+
+console.log('Smoke checks passed: structure, JS syntax, assistant UI, RPC/ADM wiring, catalog dropdowns, brand palette and security headers.');
