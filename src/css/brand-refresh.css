@@ -126,3 +126,5 @@ header{background:rgba(255,254,250,.96);color:var(--ink);border-bottom:1px solid
 .nav .logotype b{font-size:25px;letter-spacing:.07em}
 .nav .logotype em{font-size:6px;letter-spacing:.2em;margin-top:3px}
 @media(max-width:760px){.nav .logo{min-width:88px}.nav .brand-mark{width:34px;height:30px}.nav .logotype b{font-size:22px}}
+
+.store-icon{display:inline-block;width:1em;height:1em;flex:none;vertical-align:-.125em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
