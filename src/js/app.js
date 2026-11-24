@@ -1,5 +1,42 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0";
-const supa = createClient("https://khbcqvuaqmzxlmaayfla.supabase.co", "sb_publishable_N_Hr_LRVWHs-zN7NU5zV7A_aZuU6Fu1", { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+import { bindSignup, confirmationLinkState } from './signup.mjs';
+import { stagingBuild, tokenHashStaging } from './auth-staging.mjs';
+import {
+  bindPasswordForm, confirmRecoveryToken, exchangeRecoveryLink, readRecoveryReturn,
+  recoveryStorage, stagingAuthProject,
+} from './password.mjs';
+
+const productionAuthProject = ["https://khbcqvuaqmzxlmaayfla.supabase.co", "sb_publishable_N_Hr_LRVWHs-zN7NU5zV7A_aZuU6Fu1"];
+const recoveryReturn = new URL('/?senha=recuperar', location.origin);
+const stagingProject = stagingBuild
+  ? stagingAuthProject(tokenHashStaging, location.origin)
+  : null;
+if (stagingBuild && !stagingProject) throw new Error('Configuração de autenticação de staging inválida.');
+const authProject = stagingBuild ? stagingProject : productionAuthProject;
+let initialUrl = new URL(location.href);
+const legacyRecovery = new URLSearchParams(initialUrl.hash.slice(1)).get('type') === 'recovery';
+let recoveryCallback = readRecoveryReturn(initialUrl) || (legacyRecovery ? { kind: 'legacy' } : null);
+const isRecoveryReturn = Boolean(recoveryCallback);
+const signupCallback = isRecoveryReturn ? null : confirmationLinkState(initialUrl);
+let openingRecoveryLink = isRecoveryReturn;
+initialUrl = null;
+if (isRecoveryReturn) history.replaceState(history.state, '', recoveryReturn.pathname + recoveryReturn.search);
+const supa = createClient(...authProject, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: !isRecoveryReturn },
+});
+let recoveryClient;
+function getRecoveryClient() {
+  if (!recoveryClient) {
+    const storageKey = 'emporio-password-recovery';
+    recoveryClient = createClient(...authProject, {
+      auth: {
+        flowType: 'pkce', storageKey, storage: recoveryStorage(localStorage, storageKey),
+        persistSession: true, autoRefreshToken: false, detectSessionInUrl: false,
+      },
+    }).auth;
+  }
+  return recoveryClient;
+}
 let WA='556236367239';
 const normalizePhone = value => {
   let digits = String(value || '').replace(/\D/g,'');
@@ -7,7 +44,6 @@ const normalizePhone = value => {
   return '+55' + digits;
 };
 const paymentLabels = {pix:'Pix',dinheiro:'Dinheiro',cartao_entrega:'Cartão na entrega'};
-const isStrongPassword = value => value.length>=12 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
 let currentUser = null;
 let isAdmin = false;
 let isSalesStaff = false;
@@ -59,8 +95,10 @@ function showAdminWelcomeNotification(){
   window.setTimeout(()=>layer.classList.remove('is-visible'),5600);
 }
 async function refreshAuth(){
+  if (recoveryInProgress()) return;
   const {data:{session}}=await supa.auth.getSession();
-  const nextUser=session?.user||null;
+  if (signupInProgress() || recoveryInProgress()) return;
+  const nextUser = session?.user?.email && !session.user.email_confirmed_at ? null : session?.user || null;
   const changed=currentUser?.id!==nextUser?.id;
   currentUser=nextUser;isAdmin=false;isSalesStaff=false;currentProfile=null;
   if(currentUser){
@@ -205,33 +243,154 @@ function renderCollectionProducts(){
 document.getElementById('collectionSearch').addEventListener('input',renderCollectionProducts);
 document.getElementById('collectionSort').addEventListener('change',renderCollectionProducts);
 document.getElementById('backHome').onclick=()=>closeCollection();
-window.addEventListener('popstate',()=>{if(new URLSearchParams(location.search).get('admin')==='1'){document.getElementById('accountModal').classList.remove('open');document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;if(isAdmin)loadAdminDashboard();}else if(new URLSearchParams(location.search).get('vendas')==='1'){openSalesPanel(true);}else if(document.body.classList.contains('admin-mode')){document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;}const route=collectionFromUrl();if(route){currentCollection=route;renderCollection();}else closeCollection(false);});
+window.addEventListener('popstate',()=>{if(recoveryInProgress())return;if(new URLSearchParams(location.search).get('admin')==='1'){document.getElementById('accountModal').classList.remove('open');document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;if(isAdmin)loadAdminDashboard();}else if(new URLSearchParams(location.search).get('vendas')==='1'){openSalesPanel(true);}else if(document.body.classList.contains('admin-mode')){document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;}const route=collectionFromUrl();if(route){currentCollection=route;renderCollection();}else closeCollection(false);});
 
 function renderCountries(){let el=document.getElementById('countryList');el.innerHTML=countries.map(c=>`<button class="country-btn ${activeCountry===c[0]?'active':''}" data-country="${c[0]}">${c[0]} <span>↗</span></button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>{activeCountry=b.dataset.country;renderCountries();updateCountry();openCollection({category:'Vinhos',country:activeCountry})})}
 function updateCountry(){let c=countries.find(x=>x[0]===activeCountry);document.getElementById('countryTitle').textContent=c[0];document.getElementById('countryDesc').textContent=c[1]+'. Explore os estilos e peça à equipe os rótulos disponíveis desta origem.';const found=products.filter(p=>p.country===c[0]&&/vinho|espumante/i.test(p.category+' '+p.name));document.getElementById('countryNote').textContent=found.length?found.length+' rótulo(s) já publicado(s) nesta origem. Os produtos estão separados por país e estilo. Imagens oficiais serão exibidas assim que seus endereços forem confirmados.':'Ainda não há rótulos confirmados desta origem no catálogo publicado. Não exibimos produtos ou preços estimados.'}
 document.getElementById('wineStyles').querySelectorAll('button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#wineStyles button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const style=b.textContent==='Todos os estilos'?null:b.textContent;openCollection({category:'Vinhos',country:activeCountry,style})});
 
-let registrationInProgress=false;
-async function handleRegistration(e,fields){
- e.preventDefault();if(registrationInProgress)return;const form=e.currentTarget,button=form.querySelector('button[type="submit"]');
- const name=document.getElementById(fields.name).value.trim(),email=document.getElementById(fields.email).value.trim().toLowerCase(),password=document.getElementById(fields.password).value;
- if(name.length<2){toast('Informe seu nome completo.');return;}if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Informe um e-mail válido.');return;}if(!isStrongPassword(password)){toast('Use pelo menos 12 caracteres, com maiúscula, minúscula, número e símbolo.');return;}
- registrationInProgress=true;if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Criando conta...';}
- try{const {data,error}=await supa.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:window.location.origin}});if(error){const m=String(error.message||'').toLowerCase();if(m.includes('already registered')||m.includes('already been registered')||m.includes('duplicate key')||m.includes('users_email_partial_key'))toast('Este e-mail já possui cadastro. Entre ou recupere sua senha.');else if(m.includes('over_email_send_rate_limit')||m.includes('security purposes')||error.status===429)toast('O serviço de e-mail aplicou um limite temporário de segurança. Tente novamente mais tarde.');else{console.error('Erro no cadastro:',error);toast('Não foi possível concluir o cadastro. Confira os dados e tente novamente.');}return;}form.reset();if(data.session){toast('Conta criada! Você já entrou no Empório Milão.');document.getElementById('accountModal').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});await refreshAuth();}else{toast('Cadastro iniciado. Verifique o e-mail de confirmação e a caixa de spam.');document.getElementById('accountModal').classList.add('open');}}
- catch(error){console.error('Falha inesperada no cadastro:',error);toast('Falha de conexão ao criar a conta. Verifique sua internet e tente novamente.');}
- finally{registrationInProgress=false;if(button){button.disabled=false;button.textContent=button.dataset.originalText||'Criar conta';}}
-}
-document.getElementById('registerForm').onsubmit=e=>handleRegistration(e,{name:'fullName',email:'email',password:'registerPassword'});
-document.getElementById('modalRegisterForm').onsubmit=e=>handleRegistration(e,{name:'modalFullName',email:'modalEmail',password:'modalRegisterPassword'});
+const signupInProgress = bindSignup({
+  auth: supa.auth,
+  forms: [document.getElementById('registerForm'), document.getElementById('modalRegisterForm')],
+  origin: location.origin,
+});
 document.getElementById('loginForm').onsubmit=async e=>{
  e.preventDefault();const email=document.getElementById('loginEmail').value.trim().toLowerCase(),password=document.getElementById('loginPassword').value;if(!email||!password){toast('Informe e-mail e senha.');return;}
  const {error}=await supa.auth.signInWithPassword({email,password});if(error){const m=String(error.message||'').toLowerCase();if(error.status===429)toast('Muitas tentativas. Aguarde antes de tentar novamente.');else if(m.includes('email not confirmed'))toast('Este e-mail ainda não foi confirmado. Verifique sua caixa de entrada ou peça ao administrador para ajustar a confirmação.');else if(m.includes('invalid login credentials'))toast('E-mail ou senha incorretos. Se acabou de cadastrar, talvez seja necessário confirmar o e-mail.');else{console.error('Falha no login:',error);toast('Não foi possível entrar: '+(error.message||'erro de autenticação'));}return;}
  toast('Login realizado com sucesso.');document.getElementById('accountModal').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});await refreshAuth();const routeParams=new URLSearchParams(location.search);if(routeParams.get('vendas')==='1')await openSalesPanel(true);else if(routeParams.get('admin')==='1'&&isAdmin){document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;document.getElementById('adminIdentity').textContent=currentUser.email||'Administrador';await loadAdminDashboard();}
 };
 document.getElementById('forgotPasswordOpen').onclick=()=>{document.getElementById('forgotEmail').value=document.getElementById('loginEmail').value.trim();document.getElementById('forgotPasswordForm').hidden=false;document.getElementById('forgotPasswordOpen').hidden=true;};
-document.getElementById('cancelPasswordRecovery').onclick=()=>{document.getElementById('forgotPasswordForm').hidden=true;document.getElementById('forgotPasswordOpen').hidden=false;};
-document.getElementById('forgotPasswordForm').onsubmit=async e=>{e.preventDefault();const email=document.getElementById('forgotEmail').value.trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Informe um e-mail válido.');return;}const {error}=await supa.auth.resetPasswordForEmail(email,{redirectTo:window.location.origin});if(error){toast(error.status===429?'O envio está temporariamente limitado por segurança. Tente mais tarde.':'Não foi possível solicitar a recuperação agora. Tente novamente mais tarde.');return;}toast('Se o e-mail estiver cadastrado, enviaremos um link de recuperação. Confira também o spam.');};
-document.getElementById('setNewPasswordForm').onsubmit=async e=>{e.preventDefault();const password=document.getElementById('recoveryNewPassword').value,confirm=document.getElementById('recoveryConfirmPassword').value;if(!isStrongPassword(password)){toast('Use pelo menos 12 caracteres, com maiúscula, minúscula, número e símbolo.');return;}if(password!==confirm){toast('As senhas não coincidem.');return;}const {error}=await supa.auth.updateUser({password});if(error){toast('Não foi possível atualizar a senha. Solicite um novo link de recuperação.');return;}e.currentTarget.reset();await supa.auth.signOut();await refreshAuth();document.getElementById('setNewPasswordForm').hidden=true;document.getElementById('accountLogin').style.display='block';document.getElementById('accountRegister').style.display='block';document.getElementById('accountStatus').textContent='Senha redefinida. Entre com sua nova senha.';toast('Senha alterada. Faça login novamente.');};
+document.getElementById('cancelPasswordRecovery').onclick = () => {
+  recoveryRequest.hidden = true;
+  document.getElementById('forgotPasswordOpen').hidden = false;
+  if (openingRecoveryLink) {
+    openingRecoveryLink = false;
+    refreshAuth().catch(() => {});
+  }
+};
+const recoveryRequest = document.getElementById('forgotPasswordForm');
+const recoveryForm = document.getElementById('setNewPasswordForm');
+const tokenPrompt = document.getElementById('tokenRecoveryPrompt');
+const tokenButton = document.getElementById('confirmTokenRecovery');
+let recoverySessionAuth = null;
+
+function recoveryInProgress() {
+  return openingRecoveryLink || Boolean(recoverySessionAuth);
+}
+
+function clearTokenPrompt() {
+  tokenPrompt.hidden = true;
+  tokenButton.onclick = null;
+}
+
+function showTokenPrompt(token) {
+  const verify = confirmRecoveryToken(token, getRecoveryClient);
+  document.getElementById('accountModal').classList.add('open');
+  for (const id of ['accountLogin', 'accountRegister', 'accountSigned']) {
+    document.getElementById(id).style.display = 'none';
+  }
+  document.getElementById('accountStatus').textContent = 'Confirme para continuar com a redefinição solicitada.';
+  tokenPrompt.hidden = false;
+  tokenButton.onclick = async () => {
+    if (tokenButton.disabled) return;
+    tokenButton.disabled = true;
+    try {
+      const auth = await verify();
+      if (auth) showRecoveryForm(auth);
+      else showRecoveryRequest('Não foi possível validar o link. Ele pode ter expirado ou já ter sido usado. Solicite outro.');
+    } finally {
+      tokenButton.disabled = false;
+    }
+  };
+}
+
+function showRecoveryRequest(message) {
+  clearTokenPrompt();
+  openingRecoveryLink = true;
+  document.getElementById('accountModal').classList.add('open');
+  document.getElementById('accountLogin').style.display = 'block';
+  document.getElementById('accountRegister').style.display = 'none';
+  document.getElementById('accountSigned').style.display = 'none';
+  document.getElementById('forgotPasswordOpen').hidden = true;
+  recoveryForm.hidden = true;
+  recoveryRequest.hidden = false;
+  document.getElementById('accountStatus').textContent = message;
+}
+
+function showRecoveryForm(auth) {
+  clearTokenPrompt();
+  recoverySessionAuth = auth;
+  openingRecoveryLink = false;
+  resetRecoveryForm();
+  document.getElementById('accountModal').classList.add('open');
+  for (const id of ['accountLogin', 'accountRegister', 'accountSigned']) {
+    document.getElementById(id).style.display = 'none';
+  }
+  recoveryForm.hidden = false;
+  document.getElementById('accountStatus').textContent = 'Verificação por e-mail concluída. Defina sua nova senha.';
+}
+
+recoveryRequest.onsubmit = async event => {
+  event.preventDefault();
+  const button = recoveryRequest.querySelector('[type="submit"]');
+  if (button.disabled) return;
+  const email = document.getElementById('forgotEmail').value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    toast('Informe um e-mail válido.');
+    return;
+  }
+  button.disabled = true;
+  try {
+    // Staging's TokenHash template substitutes its own link. No PKCE
+    // verifier is needed for requests issued with that template.
+    const auth = stagingProject ? supa.auth : getRecoveryClient();
+    const { error } = await auth.resetPasswordForEmail(email, { redirectTo: recoveryReturn.href });
+    if (error && error.code !== 'user_not_found') {
+      toast(error.status === 429 ? 'Aguarde antes de solicitar outro link.' : 'Não foi possível enviar o link agora. Tente novamente.');
+      return;
+    }
+    document.getElementById('accountStatus').textContent =
+      stagingProject
+        ? 'Se for possível recuperar sua conta, você receberá um link de recuperação.'
+        : 'Se for possível recuperar sua conta, você receberá um link. Abra-o neste mesmo navegador.';
+  } catch {
+    toast('Não foi possível enviar o link agora. Tente novamente.');
+  } finally {
+    button.disabled = false;
+  }
+};
+
+async function endRecovery() {
+  const auth = recoverySessionAuth;
+  recoverySessionAuth = null;
+  openingRecoveryLink = false;
+  recoveryForm.hidden = true;
+  try {
+    if (auth) await auth.signOut({ scope: 'local' });
+  } catch {
+    // The update already succeeded, or the user chose to request a new link.
+  }
+}
+
+const resetRecoveryForm = bindPasswordForm(recoveryForm, {
+  getAuth: () => recoverySessionAuth,
+  recovery: true,
+  onSuccess: async () => {
+    await endRecovery();
+    try {
+      await refreshAuth();
+    } catch {
+      console.error('Falha ao atualizar a área da conta após a recuperação de senha.');
+    }
+    toast('Senha redefinida. Use a nova senha no próximo acesso a essa conta.');
+  },
+});
+document.getElementById('requestAnotherRecovery').onclick = async () => {
+  if (recoveryForm.querySelector('[type="submit"]').disabled) return;
+  resetRecoveryForm();
+  await endRecovery();
+  showRecoveryRequest('Informe seu e-mail para solicitar outro link.');
+};
 
 document.getElementById('logoutBtn').onclick=async()=>{const {error}=await supa.auth.signOut();if(error){toast(error.message);return;}toast('Você saiu da sua conta.');await refreshAuth();};
 document.getElementById('accountBtn').onclick=async()=>{await refreshAuth();document.getElementById('accountModal').classList.add('open');};
@@ -239,8 +398,20 @@ const menuToggle=document.getElementById('mobileMenuToggle');
 menuToggle.onclick=()=>{const links=document.getElementById('siteLinks');const open=links.classList.toggle('open');menuToggle.setAttribute('aria-expanded',String(open));menuToggle.textContent=open?'Fechar':'Menu';};
 document.querySelectorAll('#siteLinks a').forEach(link=>link.addEventListener('click',()=>{if(currentCollection)closeCollection();document.getElementById('siteLinks').classList.remove('open');menuToggle.setAttribute('aria-expanded','false');menuToggle.textContent='Menu';}));
 document.querySelector('.logo').addEventListener('click',e=>{if(currentCollection){e.preventDefault();closeCollection();window.scrollTo({top:0,behavior:'smooth'});}});
-document.getElementById('closeModal').onclick=()=>document.getElementById('accountModal').classList.remove('open');
-document.getElementById('accountModal').onclick=e=>{if(e.target.id==='accountModal')e.currentTarget.classList.remove('open');};
+function dismissAccountModal() {
+  if (tokenButton.disabled || recoveryForm.querySelector('[type="submit"]').disabled) return;
+  document.getElementById('accountModal').classList.remove('open');
+  if (!recoveryInProgress()) return;
+  clearTokenPrompt();
+  recoveryRequest.hidden = true;
+  document.getElementById('forgotPasswordOpen').hidden = false;
+  resetRecoveryForm();
+  endRecovery().then(refreshAuth).catch(() => {});
+}
+document.getElementById('closeModal').onclick = dismissAccountModal;
+document.getElementById('accountModal').onclick = event => {
+  if (event.target.id === 'accountModal') dismissAccountModal();
+};
 
 function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function slugify(v){return String(v||'produto').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,50)||'produto';}
@@ -256,6 +427,7 @@ function closeAdminPage(){
  const p=new URLSearchParams(location.search);p.delete('admin');p.delete('vendas');history.pushState({},'',location.pathname+(p.toString()?'?'+p.toString():'')+location.hash);
 }
 async function openAdminPanel(){
+ if(recoveryInProgress())return;
  const {data:{session}}=await supa.auth.getSession();
  if(!session?.user){toast('Entre com a conta administrativa para continuar.');document.getElementById('accountModal').classList.add('open');return;}
  const {data:allowed,error}=await supa.rpc('is_admin');isAdmin=!error&&allowed===true;
@@ -267,6 +439,7 @@ async function openAdminPanel(){
 }
 
 async function openSalesPanel(fromRoute=false){
+ if(recoveryInProgress())return;
  const {data:{session}}=await supa.auth.getSession();
  if(!session?.user){document.getElementById('accountModal').classList.add('open');toast('Entre com o e-mail autorizado pela administração para lançar vendas.');return;}
  const {data:allowed,error}=await supa.rpc('is_sales_staff');
@@ -456,13 +629,10 @@ document.getElementById('profileForm').onsubmit=async e=>{
  currentProfile={...(currentProfile||{}),full_name,phone,delivery_address};document.getElementById('accountStatus').textContent='Olá, '+full_name+'. Seus dados e pedidos estão vinculados a esta conta.';
  if(email!==String(currentUser.email||'').toLowerCase()){const {error:emailError}=await supa.auth.updateUser({email});if(emailError){toast('Dados salvos, mas não foi possível alterar o e-mail: '+emailError.message);return;}toast('Dados salvos. Confirme a alteração pelo link enviado ao novo e-mail.');}else toast('Dados da conta atualizados.');
 };
-document.getElementById('passwordForm').onsubmit=async e=>{
- e.preventDefault();const password=document.getElementById('newPassword').value;
- if(!isStrongPassword(password)){toast('Use pelo menos 12 caracteres, com maiúscula, minúscula, número e símbolo.');return;}
- const {error}=await supa.auth.updateUser({password});
- if(error){toast('Não foi possível atualizar a senha: '+error.message);return;}
- e.currentTarget.reset();toast('Senha atualizada com sucesso.');
-};
+bindPasswordForm(document.getElementById('passwordForm'), {
+  getAuth: () => currentUser && !recoverySessionAuth ? supa.auth : null,
+  onSuccess: () => toast('Senha atualizada com sucesso.'),
+});
 document.getElementById('avatarForm').onsubmit=async e=>{
  e.preventDefault();if(!currentUser)return;
  const file=document.getElementById('profileAvatarFile').files[0];if(!file){toast('Escolha uma imagem primeiro.');return;}
@@ -478,10 +648,42 @@ document.getElementById('avatarForm').onsubmit=async e=>{
 
 
 async function initSupabase(){
-  supa.auth.onAuthStateChange((event,session)=>{
-    Promise.resolve().then(async()=>{await refreshAuth();if(event==='PASSWORD_RECOVERY'){document.getElementById('accountModal').classList.add('open');document.getElementById('accountLogin').style.display='none';document.getElementById('accountRegister').style.display='none';document.getElementById('accountSigned').style.display='none';document.getElementById('setNewPasswordForm').hidden=false;document.getElementById('accountStatus').textContent='Verificação por e-mail concluída. Defina sua nova senha.';}}).catch(error=>console.error('Falha ao atualizar sessão:',error));
+  supa.auth.onAuthStateChange(() => {
+    Promise.resolve().then(refreshAuth).catch(() => console.error('Falha ao atualizar sessão.'));
   });
+  if (recoveryCallback) {
+    const callback = recoveryCallback;
+    recoveryCallback = null;
+    history.replaceState(history.state, '', '/');
+    if (callback.kind === 'token' && stagingProject && callback.token) {
+      showTokenPrompt(callback.token);
+      return;
+    }
+
+    let auth = null;
+    try {
+      if (callback.kind === 'pkce' && callback.code) {
+        const recoveryAuth = getRecoveryClient();
+        if (await exchangeRecoveryLink(recoveryAuth, callback.code)) auth = recoveryAuth;
+      }
+    } catch {
+      // Storage may be unavailable in the current browser.
+    }
+    if (auth) showRecoveryForm(auth);
+    else showRecoveryRequest('Não foi possível validar o link. Solicite um novo link de recuperação.');
+    return;
+  }
   await refreshAuth();
+  if (recoverySessionAuth) return;
+  if (signupCallback !== null) {
+    const status = document.querySelector('#registerForm [data-signup-status]');
+    const { data } = signupCallback ? {} : await supa.auth.getUser();
+    status.textContent = signupCallback || (data?.user?.email_confirmed_at
+      ? 'E-mail verificado. Sua conta está disponível.'
+      : 'Não foi possível validar este link de confirmação. Solicite outro abaixo.');
+    history.replaceState(history.state, '', '/#membership');
+    document.getElementById('membership').scrollIntoView();
+  }
   if(new URLSearchParams(location.search).get('vendas')==='1'){await openSalesPanel(true);return;}
   if(new URLSearchParams(location.search).get('admin')==='1'){if(isAdmin){document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;await loadAdminDashboard();}else{history.replaceState({},'',location.pathname);document.getElementById('accountModal').classList.add('open');toast('Entre com uma conta autorizada para acessar o ADM.');}}
 }

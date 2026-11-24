@@ -306,6 +306,7 @@ body.sales-mode #adminContent>.admin-section{max-width:1100px}body.sales-mode .a
 .account-divider{display:flex;align-items:center;gap:12px;margin:22px 0 14px;color:#967c60;font-size:9px;letter-spacing:1.5px;font-weight:700}
 .account-divider:before,.account-divider:after{content:"";height:1px;background:#ded2c3;flex:1}
 .text-action{border:0;background:transparent;color:#743b42;text-decoration:underline;text-underline-offset:3px;font-size:11px;padding:12px 0;cursor:pointer}
+#registerForm [data-signup-resend]{width:auto;min-height:44px;margin-top:0;padding:8px 0;background:transparent;color:#743b42;font-size:12px;letter-spacing:normal;text-transform:none;text-align:left}
 #forgotPasswordForm{border:1px solid #e1d5c7;background:#f6f1e9;padding:16px;margin-top:12px}
 #forgotPasswordForm p,#setNewPasswordForm p,#accountRegister>p{font-size:11px;line-height:1.65;color:#75685e}
 #setNewPasswordForm{border:1px solid #d8c8b4;padding:18px;margin-top:16px;background:#f8f4ed}

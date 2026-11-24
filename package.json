@@ -1,0 +1,8 @@
+{
+  "name": "emporio-milao-staging",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:staging": "node scripts/build-staging.mjs"
+  }
+}
