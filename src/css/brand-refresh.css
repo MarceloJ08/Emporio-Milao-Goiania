@@ -117,3 +117,12 @@ header{background:rgba(255,254,250,.96);color:var(--ink);border-bottom:1px solid
  .hero-editorial{display:none}
  .benefit-strip{gap:12px}
 }
+
+/* Assinatura vertical: símbolo dourado acima do nome */
+.nav .logo{flex-direction:column;align-items:center;justify-content:center;gap:3px;min-width:112px}
+.nav .brand-mark{width:38px;height:34px}
+.nav .logotype{align-items:center;text-align:center}
+.nav .logotype small{font-size:7px;letter-spacing:.32em}
+.nav .logotype b{font-size:25px;letter-spacing:.07em}
+.nav .logotype em{font-size:6px;letter-spacing:.2em;margin-top:3px}
+@media(max-width:760px){.nav .logo{min-width:88px}.nav .brand-mark{width:34px;height:30px}.nav .logotype b{font-size:22px}}
