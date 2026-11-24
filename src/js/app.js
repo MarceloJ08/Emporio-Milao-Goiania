@@ -36,7 +36,7 @@ const normalizePhone = value => {
   return '+55' + digits;
 };
 const paymentLabels = {pix:'Pix',dinheiro:'Dinheiro',cartao_entrega:'Cartão na entrega'};
-const isStrongPassword = value => value.length>=12 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
+const isStrongPassword = value => value.length>=8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value) && /[^A-Za-z0-9]/.test(value);
 let currentUser = null;
 let isAdmin = false;
 let isSalesStaff = false;
@@ -246,7 +246,7 @@ let registrationInProgress=false;
 async function handleRegistration(e,fields){
  e.preventDefault();if(registrationInProgress)return;const form=e.currentTarget,button=form.querySelector('button[type="submit"]');
  const name=document.getElementById(fields.name).value.trim(),email=document.getElementById(fields.email).value.trim().toLowerCase(),password=document.getElementById(fields.password).value;
- if(name.length<2){toast('Informe seu nome completo.');return;}if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Informe um e-mail válido.');return;}if(!isStrongPassword(password)){toast('Use pelo menos 12 caracteres, com maiúscula, minúscula, número e símbolo.');return;}
+ if(name.length<2){toast('Informe seu nome completo.');return;}if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){toast('Informe um e-mail válido.');return;}if(!isStrongPassword(password)){toast('Use pelo menos 8 caracteres, com maiúscula, minúscula, número e símbolo.');return;}
  registrationInProgress=true;if(button){button.disabled=true;button.dataset.originalText=button.textContent;button.textContent='Criando conta...';}
  try{const {data,error}=await supa.auth.signUp({email,password,options:{data:{full_name:name},emailRedirectTo:window.location.origin}});if(error){const m=String(error.message||'').toLowerCase();if(m.includes('already registered')||m.includes('already been registered')||m.includes('duplicate key')||m.includes('users_email_partial_key'))toast('Este e-mail já possui cadastro. Entre ou recupere sua senha.');else if(m.includes('over_email_send_rate_limit')||m.includes('security purposes')||error.status===429)toast('O serviço de e-mail aplicou um limite temporário de segurança. Tente novamente mais tarde.');else{console.error('Erro no cadastro:',error);toast('Não foi possível concluir o cadastro. Confira os dados e tente novamente.');}return;}form.reset();if(data.session){toast('Conta criada! Você já entrou no Empório Milão.');document.getElementById('accountModal').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});await refreshAuth();}else{toast('Cadastro iniciado. Verifique o e-mail de confirmação e a caixa de spam.');document.getElementById('accountModal').classList.add('open');}}
  catch(error){console.error('Falha inesperada no cadastro:',error);toast('Falha de conexão ao criar a conta. Verifique sua internet e tente novamente.');}
@@ -329,7 +329,7 @@ resetPassword.onsubmit = async event => {
   const password = document.getElementById('recoveryNewPassword').value;
   const confirm = document.getElementById('recoveryConfirmPassword').value;
   if (!isStrongPassword(password) || new TextEncoder().encode(password).length > 72) {
-    toast('Use 12 ou mais caracteres, até 72 bytes, com maiúscula, minúscula, número e símbolo.');
+    toast('Use 8 ou mais caracteres, até 72 bytes, com maiúscula, minúscula, número e símbolo.');
     return;
   }
   if (password !== confirm) {
@@ -588,7 +588,7 @@ document.getElementById('profileForm').onsubmit=async e=>{
 };
 document.getElementById('passwordForm').onsubmit=async e=>{
  e.preventDefault();const password=document.getElementById('newPassword').value;
- if(!isStrongPassword(password)){toast('Use pelo menos 12 caracteres, com maiúscula, minúscula, número e símbolo.');return;}
+ if(!isStrongPassword(password)){toast('Use pelo menos 8 caracteres, com maiúscula, minúscula, número e símbolo.');return;}
  const {error}=await supa.auth.updateUser({password});
  if(error){toast('Não foi possível atualizar a senha: '+error.message);return;}
  e.currentTarget.reset();toast('Senha atualizada com sucesso.');
