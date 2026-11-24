@@ -1,0 +1,119 @@
+/* Empório Milão — identidade visual para apresentação */
+:root{
+  --ink:#1d2923;
+  --forest:#20372d;
+  --moss:#718574;
+  --gold:#b99a62;
+  --paper:#f4f2ec;
+  --white:#fffefa;
+  --muted:#6f756e;
+  --line:#deded4;
+  --red:#74434a;
+  --wine:#49343a;
+}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink)}
+.announcement{background:#1d3028;color:#f4ecdc;border-bottom:1px solid #b99a6240}
+.announcement span{color:#d4b77f}
+header{background:rgba(255,254,250,.96);color:var(--ink);border-bottom:1px solid #d8d8ce;box-shadow:0 6px 24px #1d29230b}
+.logo{color:var(--forest)}
+.brand-mark{color:var(--gold);width:46px;height:46px}
+.brand-mark svg{filter:drop-shadow(0 2px 4px #b99a6220)}
+.logotype small{color:#6f776e}
+.logotype b{color:#20372d}
+.logotype em{color:#a18450}
+.links a{color:#4d5c52}
+.links a:hover,.links a:focus-visible{color:#a18450}
+.navright .iconbtn{border-color:#d6d8cf;color:var(--forest)}
+.navright .cartbtn{background:var(--forest);color:#fffefa;border-color:var(--forest)}
+.navright .count{background:var(--gold);color:#1d2923}
+.mobile-menu-toggle{color:var(--forest);border-color:#d6d8cf}
+.benefit-strip{background:#e9ece5;border-bottom:1px solid #d8ded5;color:#26372e}
+.benefit-strip small{color:#6c766d}
+.hero{background:#1d3028}
+.hero-shade{background:linear-gradient(90deg,rgba(18,35,28,.88),rgba(18,35,28,.46) 58%,rgba(18,35,28,.14))}
+.hero-copy h1,.hero-copy h1 i{color:#fffdf7}
+.hero-overline,.kicker,.hero-proof,.hero-bottomline{color:#eee5d5}
+.kicker-dot{background:var(--gold)}
+.btn.primary{background:var(--gold);color:#1d2923;border-color:var(--gold)}
+.btn.primary:hover{background:#d0b47e}
+.btn.ghost{border-color:#e7dfd0;color:#fffdf7}
+.hero-editorial{border-left-color:#b99a62}
+.hero-editorial h2,.hero-editorial h2 em{color:#f7f1e6}
+.hero-editorial p,.editorial-caption{color:#d8d5c9}
+.manifesto{background:#20372d;color:#fffdf7}
+.manifesto-item .num{color:#d2b77e}
+.manifesto-item small{color:#d3d8cf}
+.discover,.catalog,.wine-map,.hours,.locations-section{background:var(--paper)}
+.section-top h2,.locations-heading h2,.hours h2,.member-layout h2{color:#20372d}
+.eyebrow{color:#9a7c49}
+.section-top p,.locations-heading>p,.hours-grid p{color:#70766e}
+.category{background:#fffefa;border:1px solid #e0e1d8;box-shadow:0 8px 24px #20372d08;color:#26372e}
+.category:hover,.category.selected{border-color:#b99a62;box-shadow:0 12px 30px #20372d12;transform:translateY(-2px)}
+.category .symbol{color:#a78953}
+.product-card,.product,.collection-card{background:#fffefa;border-color:#e0e1d8;box-shadow:0 10px 28px #20372d08}
+.product-card:hover,.product:hover{box-shadow:0 16px 36px #20372d14}
+.search,.select,.collection-toolbar input,.collection-toolbar select{background:#fffefa;border-color:#d8ddd4;color:#24362d}
+.chip{border-color:#d7d9d0;color:#566258}
+.chip.active,.chip:hover{background:#20372d;color:#fffefa;border-color:#20372d}
+.country-layout{background:#fffefa;border:1px solid #e0e1d8}
+.country-btn{color:#46574c;border-bottom-color:#e7e8e0}
+.country-btn.active{background:#20372d;color:#fffefa}
+.country-content h3{color:#20372d}
+.country-note{background:#f0f1eb;border-left-color:#b99a62;color:#68736a}
+.membership{background:#e9ece5}
+.member-form{background:#fffefa;border:1px solid #dce0d7;box-shadow:0 16px 40px #20372d0c}
+.member-form input,.account-modal-card input,.checkout-form input,.checkout-form textarea{background:#fffefa;border-color:#d9ddd4;color:#1d2923}
+.member-form button,.account-modal-card .btn,.checkout{background:#20372d;color:#fffefa}
+.member-form button:hover,.account-modal-card .btn:hover,.checkout:hover{background:#304b3d}
+.hours-list,.location-card{background:#fffefa;border:1px solid #e0e1d8}
+.hours-row{border-bottom-color:#e7e8e0}
+.location-card h3{color:#20372d}
+.location-card a,.locations-contact a{color:#987a47}
+.location-featured{border-top:3px solid var(--gold)}
+.footer{background:#1d3028;color:#f6f1e6}
+.footer p,.footer-bottom{color:#c9d0c7}
+.footer h3{color:#d4b77f}
+.footer-logo .brand-mark{color:#d4b77f}
+.float{background:#b99a62;color:#1d2923;box-shadow:0 12px 28px #13271e30}
+.cart-drawer .drawer{background:#fffefa;color:#1d2923}
+.drawer-head,.cart-total{border-color:#e0e1d8}
+.modal-card{background:#fffefa;color:#1d2923;border:1px solid #deded4;box-shadow:0 24px 70px #14241c30}
+.modal-card h2{color:#20372d}
+.account-modal-card h3{color:#20372d}
+.text-action{color:#8a7044}
+.admin-page{background:#f1f2ec;color:#1d2923}
+.admin-topbar{background:#20372d;color:#fffefa;border-bottom:1px solid #b99a6240}
+.admin-seal,.admin-welcome-mark{background:#b99a62!important;color:#20372d!important}
+.admin-wrap{max-width:1440px}
+.admin-title-row h1{color:#20372d}
+.admin-kpi,.admin-section,.admin-area-selector{background:#fffefa!important;border:1px solid #e0e1d8!important;box-shadow:0 10px 28px #20372d08!important}
+.admin-kpi strong{color:#20372d}
+.admin-kpi small{color:#68736a}
+.admin-kpi em{color:#8a8f86}
+.admin-section h2,.admin-area-selector h2{color:#20372d}
+.admin-primary,.admin-refresh{background:#20372d!important;color:#fffefa!important;border-color:#20372d!important}
+.admin-secondary{background:#f5f3ec!important;color:#34463b!important;border:1px solid #d9ddd4!important}
+.admin-area-button{background:#f7f7f2!important;border-color:#dfe2d9!important;color:#20372d!important}
+.admin-area-button[aria-expanded="true"]{background:#20372d!important;border-color:#20372d!important;color:#fffefa!important}
+.admin-area-button small{color:#778077!important}
+.admin-area-button[aria-expanded="true"] small{color:#e3e8df!important}
+.admin-area-button i{color:#b99a62!important}
+.admin-discount-policy-note{background:#f1f0e8!important;border-left-color:#b99a62!important;color:#35463b!important}
+.admin-table th{background:#eef0e9;color:#4d5b50}
+.admin-table td{border-bottom-color:#e8e9e1}
+.admin-order-card{background:#fbfbf7;border-color:#e0e1d8}
+.admin-welcome{background:#fffefa!important;border-color:#e0e1d8!important;border-left-color:#b99a62!important;color:#20372d!important}
+.admin-welcome h2{color:#20372d!important}
+.admin-welcome p{color:#69756b!important}
+.admin-welcome-notice .admin-welcome-card{background:#fffefa;border-color:#dfe2d9}
+.admin-welcome-notice .admin-welcome-mark{background:#20372d!important;color:#d8bd86!important}
+.toast{background:#20372d;color:#fffefa}
+:focus-visible{outline:2px solid #b99a62;outline-offset:3px}
+@media(max-width:760px){
+ .nav{padding-left:18px;padding-right:18px}
+ .brand-mark{width:39px;height:39px}
+ .logotype b{font-size:27px}
+ .hero-editorial{display:none}
+ .benefit-strip{gap:12px}
+}
