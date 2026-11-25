@@ -108,6 +108,9 @@ const isStrongPassword = value => value.length>=8 && /[a-z]/.test(value) && /[A-
 let currentUser = null;
 let isAdmin = false;
 let isSalesStaff = false;
+const accountPanels = document.getElementById('accountPanels');
+const salesOpenButton = document.getElementById('salesOpenBtn');
+const adminOpenButton = document.getElementById('adminOpenBtn');
 let adminRealtimeChannel = null;
 let adminRefreshTimer = null;
 let activeAdminArea = 'finance';
@@ -162,6 +165,9 @@ async function refreshAuth(){
   const nextUser=session?.user||null;
   const changed=currentUser?.id!==nextUser?.id;
   currentUser=nextUser;isAdmin=false;isSalesStaff=false;currentProfile=null;
+  accountPanels.hidden = true;
+  salesOpenButton.hidden = true;
+  adminOpenButton.hidden = true;
   if(currentUser){
     const {data:adminData,error:adminError}=await supa.rpc('is_admin');
     isAdmin=!adminError && adminData===true;
@@ -186,7 +192,9 @@ async function refreshAuth(){
     const avatar=document.getElementById('accountAvatar');
     avatar.innerHTML=currentProfile?.avatar_url?'<img src="'+escapeHtml(currentProfile.avatar_url)+'" alt="Foto de perfil">':escapeHtml((name.trim()[0]||'M').toUpperCase());
     document.getElementById('logoutBtn').style.display='block';
-    document.getElementById('adminOpenBtn').style.display=isAdmin?'block':'none';
+    salesOpenButton.hidden = !isSalesStaff;
+    adminOpenButton.hidden = !isAdmin;
+    accountPanels.hidden = !isSalesStaff && !isAdmin;
     const {data:orders,error:ordersError}=await supa.from('orders').select('id,status,total_amount,created_at,order_items(product_name,quantity)').eq('user_id',currentUser.id).order('created_at',{ascending:false}).limit(20);
     const box=document.getElementById('customerOrders');
     if(ordersError){box.textContent='Não foi possível carregar seus pedidos agora.';}
@@ -202,7 +210,6 @@ async function refreshAuth(){
     document.getElementById('accountRegister').style.display='block';
     document.getElementById('accountSigned').style.display='none';
     document.getElementById('customerOrders').innerHTML='';
-    document.getElementById('adminOpenBtn').style.display='none';
     if(changed)await loadCartForUser(null);
   }
 }
@@ -310,7 +317,7 @@ function renderCollectionProducts(){
 document.getElementById('collectionSearch').addEventListener('input',renderCollectionProducts);
 document.getElementById('collectionSort').addEventListener('change',renderCollectionProducts);
 document.getElementById('backHome').onclick=()=>closeCollection();
-window.addEventListener('popstate',()=>{if(recoveryOpen)return;if(new URLSearchParams(location.search).get('admin')==='1'){document.getElementById('accountModal').classList.remove('open');document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;if(isAdmin)loadAdminDashboard();}else if(new URLSearchParams(location.search).get('vendas')==='1'){openSalesPanel(true);}else if(document.body.classList.contains('admin-mode')){document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;}const route=collectionFromUrl();if(route){currentCollection=route;renderCollection();}else closeCollection(false);});
+window.addEventListener('popstate',()=>{if(recoveryOpen)return;if(new URLSearchParams(location.search).get('admin')==='1'){openAdminPanel(true);}else if(new URLSearchParams(location.search).get('vendas')==='1'){openSalesPanel(true);}else if(document.body.classList.contains('admin-mode')){document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;}const route=collectionFromUrl();if(route){currentCollection=route;renderCollection();}else closeCollection(false);});
 
 function renderCountries(){let el=document.getElementById('countryList');el.innerHTML=countries.map(c=>`<button class="country-btn ${activeCountry===c[0]?'active':''}" data-country="${c[0]}">${c[0]} <span>${storeIcon("arrow-out")}</span></button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>{activeCountry=b.dataset.country;renderCountries();updateCountry();openCollection({category:'Vinhos',country:activeCountry})})}
 function updateCountry(){let c=countries.find(x=>x[0]===activeCountry);document.getElementById('countryTitle').textContent=c[0];document.getElementById('countryDesc').textContent=c[1]+'. Explore os estilos e peça à equipe os rótulos disponíveis desta origem.';const found=products.filter(p=>p.country===c[0]&&/vinho|espumante/i.test(p.category+' '+p.name));document.getElementById('countryNote').textContent=found.length?found.length+' rótulo(s) já publicado(s) nesta origem. Os produtos estão separados por país e estilo. Imagens oficiais serão exibidas assim que seus endereços forem confirmados.':'Ainda não há rótulos confirmados desta origem no catálogo publicado. Não exibimos produtos ou preços estimados.'}
@@ -603,7 +610,7 @@ function closeAdminPage(){
  document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;document.getElementById('adminRefresh').style.display='';const salesTitle=document.querySelector('.admin-title-row h1'),salesSubtitle=document.querySelector('.admin-title-row p');if(salesTitle)salesTitle.textContent='Painel administrativo';if(salesSubtitle)salesSubtitle.textContent='Visão financeira, pedidos, pagamentos e movimentação do galpão.';
  const p=new URLSearchParams(location.search);p.delete('admin');p.delete('vendas');history.pushState({},'',location.pathname+(p.toString()?'?'+p.toString():'')+location.hash);
 }
-async function openAdminPanel(){
+async function openAdminPanel(fromRoute=false){
  if(recoveryOpen)return;
  const {data:{session}}=await supa.auth.getSession();
  if(!session?.user){toast('Entre com a conta administrativa para continuar.');document.getElementById('accountModal').classList.add('open');return;}
@@ -611,7 +618,7 @@ async function openAdminPanel(){
  if(!isAdmin){toast(error?'Não foi possível validar o acesso.':'Esta conta não possui permissão administrativa.');return;}
  document.getElementById('accountModal').classList.remove('open');
  document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;
- const p=new URLSearchParams(location.search);p.set('admin','1');history.pushState({admin:true},'',location.pathname+'?'+p.toString());
+ if(!fromRoute){const p=new URLSearchParams(location.search);p.delete('vendas');p.set('admin','1');history.pushState({admin:true},'',location.pathname+'?'+p.toString());}
  document.getElementById('adminIdentity').textContent=session.user.email||'Administrador';await loadAdminDashboard();
 }
 
@@ -626,7 +633,7 @@ async function openSalesPanel(fromRoute=false){
  const salesTitle=document.querySelector('.admin-title-row h1'),salesSubtitle=document.querySelector('.admin-title-row p');if(salesTitle)salesTitle.textContent='Central de atendimento';if(salesSubtitle)salesSubtitle.textContent='Consulte produtos, monte orçamentos e registre pedidos diretamente no financeiro da loja.';document.getElementById('adminRefresh').style.display='none';
  document.getElementById('adminIdentity').textContent=session.user.email||'Atendimento';
  document.getElementById('adminContent').innerHTML='<p>Preparando o lançamento de vendas...</p>';
- if(!fromRoute){const p=new URLSearchParams(location.search);p.set('vendas','1');history.pushState({sales:true},'',location.pathname+'?'+p.toString());}
+ if(!fromRoute){const p=new URLSearchParams(location.search);p.delete('admin');p.set('vendas','1');history.pushState({sales:true},'',location.pathname+'?'+p.toString());}
  await renderSalesWorkspace();
 }
 async function renderSalesWorkspace(){
@@ -788,7 +795,8 @@ async function loadAdminDashboard(){
  content.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{const {error}=await supa.from('products').update({active:btn.dataset.active!=='true',updated_at:new Date().toISOString()}).eq('id',btn.dataset.toggle);if(error){toast('Não foi possível alterar o produto.');return;}await loadProducts();await loadAdminDashboard();});
  const search=document.getElementById('adminOrderSearch'),filter=document.getElementById('adminOrderFilter');const applyFilter=()=>{const q=search.value.toLowerCase(),v=filter.value;content.querySelectorAll('.admin-order-card').forEach(card=>{const text=card.textContent.toLowerCase(),pay=card.querySelector('[data-payment-status]')?.value||'pending',cancel=card.querySelector('[data-order-status]')?.value==='cancelled';card.style.display=(!q||text.includes(q))&&(v==='all'||(v==='paid'&&pay==='paid')||(v==='pending'&&pay==='pending')||(v==='cancelled'&&cancel))?'':'none';});};search.oninput=applyFilter;filter.onchange=applyFilter;
 }
-document.getElementById('adminOpenBtn').onclick=openAdminPanel;
+adminOpenButton.onclick=()=>openAdminPanel();
+salesOpenButton.onclick=()=>openSalesPanel();
 document.getElementById('adminBackToStore').onclick=closeAdminPage;
 document.getElementById('adminBackToStore').textContent='← Voltar';
 document.getElementById('adminRefresh').onclick=loadAdminDashboard;

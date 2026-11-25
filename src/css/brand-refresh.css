@@ -159,3 +159,11 @@ header{background:rgba(255,254,250,.96);color:var(--ink);border-bottom:1px solid
 .password-field > .password-toggle:hover{background:transparent;color:#20372d}
 .password-toggle:focus-visible{outline:2px solid currentColor;outline-offset:-4px}
 .password-toggle .store-icon{width:20px;height:20px}
+
+#accountPanels{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,140px),1fr));
+  gap:8px;margin-top:8px;
+}
+#accountPanels[hidden],#accountPanels > [hidden]{display:none}
+#accountPanels > .btn{margin:0;justify-content:center}
+#accountPanels > .btn:focus-visible{outline:2px solid #304b3d;outline-offset:2px}
