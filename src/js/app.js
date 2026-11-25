@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0";
 import { bindEmailFeedback, createEmailPolicy, emailErrorKind, withEmailTimeout } from './email-requests.mjs';
 import { setupSignupConfirmation, signupReturnFrom } from './signup-confirmation.mjs';
 
+import { readAssurance, setupMfaChallenge, setupMfaSettings } from './mfa.mjs';
 import { captchaErrorMessage, requestCaptcha } from './turnstile.mjs';
 
 const passwordFields = document.querySelectorAll(
@@ -77,6 +78,16 @@ const supa = createClient(...authProject, {
   global: { fetch: emailFetch },
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: !recoveryReturn },
 });
+
+const mfaChallenge = setupMfaChallenge(document.getElementById('mfaChallenge'));
+const mfaSettingsToggle = document.getElementById('mfaSettingsToggle');
+const mfaSettings = setupMfaSettings({
+  auth: supa.auth,
+  panel: document.getElementById('mfaSettings'),
+  toggle: mfaSettingsToggle,
+  refresh: refreshAuth,
+});
+mfaSettingsToggle.onclick = () => { if (currentUser) mfaSettings.open(currentUser.id); };
 
 let recoveryClient;
 function getRecoveryClient() {
@@ -160,9 +171,26 @@ function showAdminWelcomeNotification(){
 }
 async function refreshAuth(){
   if (recoveryOpen) return;
-  const {data:{session}}=await supa.auth.getSession();
+  const assurance = await readAssurance(supa.auth);
   if (recoveryOpen) return;
+  const session = assurance.session;
+  if (assurance.state === 'challenge' || assurance.state === 'unavailable') {
+    document.body.classList.remove('admin-mode', 'sales-mode');
+    document.getElementById('adminPage').hidden = true;
+    mfaChallenge.show({
+      auth: supa.auth,
+      userId: assurance.userId,
+      retry: async () => { if (await refreshAuth()) await finishLogin(); },
+      cancel: async () => {
+        const { error } = await supa.auth.signOut({ scope: 'local' });
+        if (error) throw error;
+        await refreshAuth();
+      },
+      verified: async () => { if (await refreshAuth()) await finishLogin(); },
+    });
+  } else mfaChallenge.close(supa.auth);
   const nextUser=session?.user||null;
+  mfaSettings.retain(nextUser?.id);
   const changed=currentUser?.id!==nextUser?.id;
   currentUser=nextUser;isAdmin=false;isSalesStaff=false;currentProfile=null;
   accountPanels.hidden = true;
@@ -212,6 +240,7 @@ async function refreshAuth(){
     document.getElementById('customerOrders').innerHTML='';
     if(changed)await loadCartForUser(null);
   }
+  return session;
 }
 
 
@@ -398,18 +427,8 @@ document.getElementById('loginForm').onsubmit = async event => {
       return;
     }
 
-    toast('Login realizado com sucesso.');
-    modal.classList.remove('open');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    await refreshAuth();
-    const routeParams = new URLSearchParams(location.search);
-    if (routeParams.get('vendas') === '1') await openSalesPanel(true);
-    else if (routeParams.get('admin') === '1' && isAdmin) {
-      document.body.classList.add('admin-mode');
-      document.getElementById('adminPage').hidden = false;
-      document.getElementById('adminIdentity').textContent = currentUser.email || 'Administrador';
-      await loadAdminDashboard();
-    }
+    form.reset();
+    if (await refreshAuth()) await finishLogin();
   } catch (error) {
     toast(captchaErrorMessage(error) || 'Não foi possível concluir o acesso. Verifique a conexão e tente novamente.');
   } finally {
@@ -418,6 +437,15 @@ document.getElementById('loginForm').onsubmit = async event => {
     form.removeAttribute('aria-busy');
   }
 };
+async function finishLogin() {
+  toast('Login realizado com sucesso.');
+  document.getElementById('accountModal').classList.remove('open');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  const params = new URLSearchParams(location.search);
+  if (params.get('vendas') === '1') await openSalesPanel(true);
+  else if (params.get('admin') === '1' && isAdmin) await openAdminPanel(true);
+}
+
 const requestReset = document.getElementById('forgotPasswordForm');
 const resetPassword = document.getElementById('setNewPasswordForm');
 const sendRecoveryEmail = bindEmailFeedback(requestReset, emailPolicy, 'recovery');
@@ -459,9 +487,29 @@ function openResetRequest(message) {
   if (message) recoveryStatus.textContent = message;
 }
 
-function openNewPasswordForm(auth) {
+async function openNewPasswordForm(auth) {
   recoveryAuth = auth;
   clearRecoveryConfirmation();
+  const assurance = await readAssurance(auth);
+  if (recoveryAuth !== auth) return;
+  if (assurance.state === 'signed-out') {
+    mfaChallenge.close(auth);
+    recoveryAuth = null;
+    showRecoveryFailure();
+    return;
+  }
+  if (assurance.state !== 'ready') {
+    resetPassword.hidden = true;
+    mfaChallenge.show({
+      auth,
+      userId: assurance.userId,
+      retry: () => openNewPasswordForm(auth),
+      verified: () => openNewPasswordForm(auth),
+      cancel: closeRecovery,
+    });
+    return;
+  }
+  mfaChallenge.close(auth);
   showRecoveryView('Definir nova senha', 'E-mail verificado. Defina sua nova senha.');
   resetPassword.hidden = false;
   document.getElementById('recoveryNewPassword').focus();
@@ -491,7 +539,7 @@ function awaitRecoveryConfirmation(tokenHash) {
     try {
       const auth = getRecoveryClient();
       const { data, error } = await auth.verifyOtp({ token_hash: credential, type: 'recovery' });
-      if (!error && data?.session?.user?.id) openNewPasswordForm(auth);
+      if (!error && data?.session?.user?.id) await openNewPasswordForm(auth);
       else showRecoveryFailure(error?.code);
     } catch {
       showRecoveryFailure();
@@ -533,6 +581,7 @@ requestReset.onsubmit = async event => {
 async function closeRecovery() {
   const auth = recoveryAuth;
   recoveryAuth = null;
+  mfaChallenge.close(auth);
   resetPassword.reset();
   resetPassword.hidden = true;
   requestReset.hidden = true;
@@ -562,7 +611,8 @@ resetPassword.onsubmit = async event => {
   try {
     const { error } = await recoveryAuth.updateUser({ password });
     if (error) {
-      if (error.code === 'same_password') toast('Escolha uma senha diferente da anterior.');
+      if (error.code === 'insufficient_aal') await openNewPasswordForm(recoveryAuth);
+      else if (error.code === 'same_password') toast('Escolha uma senha diferente da anterior.');
       else if (error.code === 'weak_password') toast('A senha foi recusada. Escolha outra e tente novamente.');
       else toast('Não foi possível atualizar a senha. Tente novamente ou solicite outro link.');
       return;
@@ -588,7 +638,8 @@ menuToggle.onclick=()=>{const links=document.getElementById('siteLinks');const o
 document.querySelectorAll('#siteLinks a').forEach(link=>link.addEventListener('click',()=>{if(currentCollection)closeCollection();document.getElementById('siteLinks').classList.remove('open');menuToggle.setAttribute('aria-expanded','false');menuToggle.textContent='Menu';}));
 document.querySelector('.logo').addEventListener('click',e=>{if(currentCollection){e.preventDefault();closeCollection();window.scrollTo({top:0,behavior:'smooth'});}});
 function dismissAccountModal() {
-  if (recoveryStarting || savePasswordButton.disabled) return;
+  if (recoveryStarting || savePasswordButton.disabled || mfaChallenge.isOpen()) return;
+  mfaSettings.close();
   document.getElementById('accountModal').classList.remove('open');
   if (recoveryOpen) closeRecovery().catch(() => {});
 }
@@ -612,7 +663,8 @@ function closeAdminPage(){
 }
 async function openAdminPanel(fromRoute=false){
  if(recoveryOpen)return;
- const {data:{session}}=await supa.auth.getSession();
+ const session = await refreshAuth();
+ if(mfaChallenge.isOpen())return;
  if(!session?.user){toast('Entre com a conta administrativa para continuar.');document.getElementById('accountModal').classList.add('open');return;}
  const {data:allowed,error}=await supa.rpc('is_admin');isAdmin=!error&&allowed===true;
  if(!isAdmin){toast(error?'Não foi possível validar o acesso.':'Esta conta não possui permissão administrativa.');return;}
@@ -624,7 +676,8 @@ async function openAdminPanel(fromRoute=false){
 
 async function openSalesPanel(fromRoute=false){
  if(recoveryOpen)return;
- const {data:{session}}=await supa.auth.getSession();
+ const session = await refreshAuth();
+ if(mfaChallenge.isOpen())return;
  if(!session?.user){document.getElementById('accountModal').classList.add('open');toast('Entre com o e-mail autorizado pela administração para lançar vendas.');return;}
  const {data:allowed,error}=await supa.rpc('is_sales_staff');
  if(error||allowed!==true){toast('Este e-mail não possui acesso ao lançamento de vendas. Solicite liberação ao administrador.');return;}
@@ -801,7 +854,7 @@ document.getElementById('adminBackToStore').onclick=closeAdminPage;
 document.getElementById('adminBackToStore').textContent='← Voltar';
 document.getElementById('adminRefresh').onclick=loadAdminDashboard;
 
-document.getElementById('settingsToggleBtn').onclick=()=>{const box=document.getElementById('accountSettings');box.style.display=box.style.display==='none'?'block':'none';};
+document.getElementById('settingsToggleBtn').onclick=()=>{const box=document.getElementById('accountSettings');box.style.display=box.style.display==='none'?'block':'none';if(box.style.display==='none')mfaSettings.close();};
 const profileForm = document.getElementById('profileForm');
 const saveProfile = bindEmailFeedback(profileForm, emailPolicy, 'emailChange');
 profileForm.onsubmit = async event => {
@@ -858,9 +911,13 @@ document.getElementById('avatarForm').onsubmit=async e=>{
 
 async function initSupabase(){
   supa.auth.onAuthStateChange((event, session) => {
-    setTimeout(() => {
-      refreshAuth().catch(() => console.error('Falha ao atualizar sessão.'));
-      if (['SIGNED_IN', 'USER_UPDATED'].includes(event)) signupConfirmation.check(session).catch(() => {});
+    setTimeout(async () => {
+      try {
+        const ready = await refreshAuth();
+        if (ready?.access_token === session?.access_token && ['SIGNED_IN', 'USER_UPDATED'].includes(event)) {
+          await signupConfirmation.check(session);
+        }
+      } catch { /* The account stays gated if the session cannot be checked. */ }
     }, 0);
   });
   if (recoveryReturn) {
@@ -894,12 +951,13 @@ async function initSupabase(){
       recoveryStarting = false;
     }
 
-    if (recoveryAuth) openNewPasswordForm(recoveryAuth);
+    if (recoveryAuth) await openNewPasswordForm(recoveryAuth);
     else showRecoveryFailure(failure);
     return;
   }
-  await signupConfirmation.initial().catch(() => {});
   await refreshAuth();
+  if (mfaChallenge.isOpen()) return;
+  await signupConfirmation.initial().catch(() => {});
   if(new URLSearchParams(location.search).get('vendas')==='1'){await openSalesPanel(true);return;}
   if(new URLSearchParams(location.search).get('admin')==='1'){if(isAdmin){document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;await loadAdminDashboard();}else{history.replaceState({},'',location.pathname);document.getElementById('accountModal').classList.add('open');toast('Entre com uma conta autorizada para acessar o ADM.');}}
 }

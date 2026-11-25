@@ -128,7 +128,7 @@ header{background:rgba(255,254,250,.96);color:var(--ink);border-bottom:1px solid
 @media(max-width:760px){.nav .logo{min-width:88px}.nav .brand-mark{width:34px;height:30px}.nav .logotype b{font-size:22px}}
 
 .store-icon{display:inline-block;width:1em;height:1em;flex:none;vertical-align:-.125em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
-#accountModal.confirmation-open .account-modal-card > :not(#signupConfirmation):not(#closeModal),
+#accountModal.confirmation-open:not(.mfa-open) .account-modal-card > :not(#signupConfirmation):not(#closeModal),
 #signupConfirmation[hidden], #resendSignupForm[hidden], #registerForm[hidden]{display:none}
 .signup-confirmation{padding:12px 0 0;text-align:center;color:#20372d}
 .signup-confirmation h2{margin:4px 0 10px}
@@ -167,3 +167,15 @@ header{background:rgba(255,254,250,.96);color:var(--ink);border-bottom:1px solid
 #accountPanels[hidden],#accountPanels > [hidden]{display:none}
 #accountPanels > .btn{margin:0;justify-content:center}
 #accountPanels > .btn:focus-visible{outline:2px solid #304b3d;outline-offset:2px}
+#accountModal.mfa-open .account-modal-card > :not(#mfaChallenge){display:none}
+.mfa-section[hidden], .mfa-section [hidden]{display:none}
+.mfa-section{color:#20372d}
+#mfaSettings{margin:12px 0;padding:12px;border:1px solid #d9ddd4}
+.mfa-section select{width:100%;min-height:44px;padding:8px;border:1px solid #d9ddd4;background:#fffefa;color:inherit}
+.mfa-section ul{padding:0;margin:8px 0;list-style:none}
+.mfa-section li{display:flex;align-items:center;flex-wrap:wrap;justify-content:space-between;gap:4px 12px;padding:4px 0}
+.mfa-section li span,.mfa-section code{overflow-wrap:anywhere}
+.mfa-section img{display:block;max-width:100%;height:auto;margin:12px auto;background:white}
+.mfa-section summary{cursor:pointer}
+.mfa-section [role="status"]{margin-block:8px}
+.mfa-section .text-action{min-height:44px}
