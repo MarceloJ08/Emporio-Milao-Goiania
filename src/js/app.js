@@ -4,6 +4,31 @@ import { setupSignupConfirmation, signupReturnFrom } from './signup-confirmation
 
 import { captchaErrorMessage, requestCaptcha } from './turnstile.mjs';
 
+const passwordFields = document.querySelectorAll(
+  'input[type="password"][autocomplete="current-password"], input[type="password"][autocomplete="new-password"]',
+);
+for (const input of passwordFields) {
+  const field = document.createElement('div');
+  field.className = 'password-field';
+  const toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'password-toggle';
+  toggle.setAttribute('aria-controls', input.id);
+  toggle.setAttribute('aria-label', input.id === 'recoveryConfirmPassword' ? 'Mostrar confirmação da senha' : 'Mostrar senha');
+  toggle.innerHTML = '<svg class="store-icon" aria-hidden="true"><use></use></svg>';
+  const icon = toggle.querySelector('use');
+  const setVisibility = visible => {
+    input.type = visible ? 'text' : 'password';
+    toggle.setAttribute('aria-pressed', String(visible));
+    icon.setAttribute('href', visible ? '/src/icons.svg#eye-off' : '/src/icons.svg#eye');
+  };
+  toggle.addEventListener('click', () => setVisibility(input.type === 'password'));
+  input.form.addEventListener('reset', () => setVisibility(false));
+  input.before(field);
+  field.append(input, toggle);
+  setVisibility(false);
+}
+
 const signupReturn = signupReturnFrom(new URL(location.href));
 
 let emailStorage;

@@ -147,3 +147,15 @@ header{background:rgba(255,254,250,.96);color:var(--ink);border-bottom:1px solid
 @media(prefers-reduced-motion:reduce){
   .confirmation-letter,.confirmation-flap,.signup-confirmation[data-state="confirmed"] .confirmation-check{animation:none}
 }
+
+.password-field{position:relative;min-width:0}
+.password-field > input{display:block;width:100%;min-height:44px;padding-inline-end:50px;box-sizing:border-box}
+.password-field > input::-ms-reveal{display:none}
+.password-field > .password-toggle{
+  position:absolute;inset-block:0;inset-inline-end:0;
+  display:grid;place-items:center;width:44px;min-height:0;margin:0;padding:0;
+  border:0;background:transparent;color:#304b3d;cursor:pointer;
+}
+.password-field > .password-toggle:hover{background:transparent;color:#20372d}
+.password-toggle:focus-visible{outline:2px solid currentColor;outline-offset:-4px}
+.password-toggle .store-icon{width:20px;height:20px}

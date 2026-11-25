@@ -72,7 +72,7 @@ export async function requestCaptcha(form, action) {
         appearance: 'interaction-only',
         execution: 'execute',
         size: form.clientWidth < 310 ? 'compact' : 'flexible',
-        language: 'pt-BR',
+        language: 'pt-br',
         'response-field': false,
         retry: 'never',
         'refresh-expired': 'never',
