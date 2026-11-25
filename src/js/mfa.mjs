@@ -20,13 +20,38 @@ export async function readAssurance(auth) {
   return { state: 'unavailable' };
 }
 
+const factorSlots = ['Autenticador 1', 'Autenticador 2', 'Autenticador 3'];
+const factorLimitMessage = 'Você atingiu o limite de 3 autenticadores. Remova um antes de adicionar outro.';
+
+function availableFactorName(names) {
+  const occupied = new Set(names.values());
+  return factorSlots.find(name => !occupied.has(name));
+}
+
+function factorNames(factors) {
+  const names = new Map(factors.filter(factor => factor.friendly_name)
+    .map(factor => [factor.id, factor.friendly_name]));
+  for (const factor of factors) {
+    if (factor.factor_type === 'totp' && !names.has(factor.id)) {
+      names.set(factor.id, availableFactorName(names) || 'Autenticador');
+    }
+  }
+  return names;
+}
+
 const messageFor = error => {
   switch (error?.code) {
     case 'mfa_challenge_expired':
     case 'mfa_verification_failed':
       return 'Código incorreto, expirado ou já usado. Confira o código atual no aplicativo.';
     case 'too_many_enrolled_mfa_factors':
-      return 'Você atingiu o limite de 3 autenticadores. Remova um antes de adicionar outro.';
+      return factorLimitMessage;
+    case 'mfa_factor_name_conflict':
+      return 'Outro cadastro já usou esse nome. A lista foi atualizada. Tente adicionar novamente.';
+    case 'mfa_factor_not_found':
+      return 'Esse autenticador não está mais disponível. Atualize a lista e tente novamente.';
+    case 'mfa_totp_enroll_not_enabled':
+      return 'O cadastro de autenticadores TOTP está indisponível. Fale com o suporte.';
     case 'insufficient_aal':
       return 'Confirme sua identidade com um autenticador e tente novamente.';
     case 'session_not_found':
@@ -41,9 +66,8 @@ const messageFor = error => {
 
 const readCode = input => input.value.trim().replace(/\s/g, '');
 const validCode = code => /^\d{6}$/.test(code);
-function setFactors(select, factors) {
-  select.replaceChildren(...factors.map((factor, index) =>
-    new Option(factor.friendly_name || 'Autenticador ' + (index + 1), factor.id)));
+function setFactors(select, factors, names) {
+  select.replaceChildren(...factors.map(factor => new Option(names.get(factor.id), factor.id)));
 }
 
 export function setupMfaChallenge(panel) {
@@ -88,7 +112,7 @@ export function setupMfaChallenge(panel) {
     const { data, error } = await context.auth.mfa.listFactors();
     if (active !== context) return;
     if (error) throw error;
-    setFactors(factor, data.totp);
+    setFactors(factor, data.totp, factorNames(data.all));
     form.hidden = !data.totp.length;
     retry.hidden = Boolean(data.totp.length);
     status.textContent = data.totp.length ? '' : 'Nenhum autenticador TOTP disponível. Se você perdeu o acesso, fale com o suporte.';
@@ -202,15 +226,21 @@ export function setupMfaSettings({ auth, panel, toggle, refresh }) {
     }
   }
 
-  async function load(level, isCurrent, message = '') {
+  async function load(level, isCurrent, message = '', limitReached) {
     const { data, error } = await auth.mfa.listFactors();
     if (!isCurrent()) return;
     if (error) throw error;
-    const factors = data.all.filter(f => f.factor_type === 'totp');
+    renderFactors(data.all, message, limitReached);
+  }
+
+  function renderFactors(all, message = '', limitReached = all.length >= factorSlots.length) {
+    const names = factorNames(all);
+    const factors = all.filter(f => f.factor_type === 'totp')
+      .sort((a, b) => names.get(a.id).localeCompare(names.get(b.id), 'pt-BR', { numeric: true }));
     const verified = factors.filter(f => f.status === 'verified');
-    const rows = factors.map((factor, index) => {
+    const rows = factors.map(factor => {
       const item = document.createElement('li');
-      const name = factor.friendly_name || 'Autenticador ' + (index + 1);
+      const name = names.get(factor.id);
       const isVerified = factor.status === 'verified';
       const label = document.createElement('span');
       label.textContent = name + (isVerified ? ' · Verificado' : ' · Pendente');
@@ -227,7 +257,7 @@ export function setupMfaSettings({ auth, panel, toggle, refresh }) {
           add.hidden = true;
           heading.textContent = 'Confirme a remoção de ' + name;
           status.textContent = verified.length === 1 ? 'Ao remover o último autenticador, a autenticação de dois fatores será desativada.' : '';
-          setFactors(select, verified.length > 1 ? verified.filter(item => item.id !== factor.id) : verified);
+          setFactors(select, verified.length > 1 ? verified.filter(item => item.id !== factor.id) : verified, names);
           setup.hidden = true;
           selector.hidden = false;
           form.hidden = false;
@@ -242,21 +272,45 @@ export function setupMfaSettings({ auth, panel, toggle, refresh }) {
       return item;
     });
     list.replaceChildren(...rows);
-    add.hidden = data.all.length >= 3;
-    status.textContent = message || (add.hidden ? 'Limite de 3 autenticadores atingido.'
-      : factors.length ? 'Guarde um autenticador de reserva em outro dispositivo.' : 'Nenhum autenticador configurado.');
+    add.hidden = false;
+    add.disabled = limitReached;
+    status.textContent = [message, limitReached ? factorLimitMessage : ''].filter(Boolean).join(' ')
+      || (factors.length ? 'Guarde um autenticador de reserva em outro dispositivo.' : 'Nenhum autenticador configurado.');
   }
 
   add.onclick = () => run(async (level, isCurrent) => {
-    if (action) return;
-    const { data, error } = await auth.mfa.enroll({ factorType: 'totp', issuer: 'Empório Milão' });
-    if (!isCurrent()) return;
-    if (error) throw error;
-    action = { type: 'enroll', id: data.id };
+    if (action || add.disabled) return;
+    let enrolled;
+    for (let attempt = 0; attempt <= factorSlots.length; attempt++) {
+      const { data: factors, error: listError } = await auth.mfa.listFactors();
+      if (!isCurrent()) return;
+      if (listError) throw listError;
+      if (factors.all.length >= factorSlots.length) {
+        renderFactors(factors.all);
+        return;
+      }
+      if (attempt === factorSlots.length) {
+        renderFactors(factors.all, messageFor({ code: 'mfa_factor_name_conflict' }));
+        return;
+      }
+      const friendlyName = availableFactorName(factorNames(factors.all));
+      const { data, error } = await auth.mfa.enroll({ factorType: 'totp', issuer: 'Empório Milão', friendlyName });
+      if (!isCurrent()) return;
+      if (error?.code === 'mfa_factor_name_conflict') continue;
+      if (error?.code === 'too_many_enrolled_mfa_factors') {
+        renderFactors(factors.all, '', true);
+        await load(level, isCurrent, '', true);
+        return;
+      }
+      if (error) throw error;
+      enrolled = data;
+      break;
+    }
+    action = { type: 'enroll', id: enrolled.id };
     list.hidden = true;
     heading.textContent = 'Configure o autenticador';
-    if (data.totp.qr_code.startsWith('data:image/svg+xml;utf-8,')) qr.src = data.totp.qr_code;
-    secret.textContent = data.totp.secret;
+    if (enrolled.totp.qr_code.startsWith('data:image/svg+xml;utf-8,')) qr.src = enrolled.totp.qr_code;
+    secret.textContent = enrolled.totp.secret;
     setup.hidden = false;
     selector.hidden = true;
     form.hidden = false;
