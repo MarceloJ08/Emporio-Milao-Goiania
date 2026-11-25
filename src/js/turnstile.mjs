@@ -8,25 +8,35 @@ const loadFailed = 'Não foi possível carregar a verificação de segurança. C
 class TurnstileError extends Error {}
 
 let loading;
+let loadAttempt = 0;
+
 function loadTurnstile() {
   if (!loading) {
     loading = new Promise((resolve, reject) => {
       const script = document.createElement('script');
-      script.src = turnstileUrl;
+      const callback = 'emporioTurnstileLoaded' + ++loadAttempt;
       script.async = true;
-      const fail = () => {
+      script.src = turnstileUrl + '&onload=' + callback;
+
+      const cleanup = () => {
         clearTimeout(timer);
+        delete window[callback];
+        script.onerror = null;
+      };
+      const fail = () => {
+        cleanup();
         script.remove();
         reject(new TurnstileError(loadFailed));
       };
       const timer = setTimeout(fail, 12_000);
       script.onerror = fail;
-      script.onload = () => {
-        if (!window.turnstile?.ready) return fail();
-        window.turnstile.ready(() => {
-          clearTimeout(timer);
-          resolve(window.turnstile);
-        });
+      // The async script signals readiness through its onload parameter.
+      window[callback] = () => {
+        const api = window.turnstile;
+        if (typeof api?.render !== 'function' || typeof api.execute !== 'function'
+          || typeof api.remove !== 'function') return fail();
+        cleanup();
+        resolve(api);
       };
       document.head.append(script);
     }).catch(error => {
