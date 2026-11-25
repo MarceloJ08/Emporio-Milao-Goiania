@@ -12,6 +12,17 @@ function readRecoveryReturn(url) {
   const rootCode = url.pathname === '/' && query.has('code') && !type;
   if (!explicitReturn && !rootCode) return null;
 
+  if (fragment.has('token_hash') || query.has('token_hash')) {
+    const hashes = fragment.getAll('token_hash');
+    const tokenHash = hashes[0] || '';
+    const valid = explicitReturn && (!type || type === 'recovery')
+      && hashes.length === 1 && /^[A-Za-z0-9_-]{1,512}$/.test(tokenHash)
+      && !query.has('token_hash') && !code && !fragment.has('access_token')
+      && !query.has('error') && !fragment.has('error')
+      && !query.has('error_code') && !fragment.has('error_code');
+    return { tokenHash: valid ? tokenHash : null };
+  }
+
   return {
     code: !type || type === 'recovery' ? code : null,
     flowId: query.get('sb_flow_id') || fragment.get('sb_flow_id'),
@@ -291,6 +302,8 @@ const savePasswordButton = resetPassword.querySelector('[type="submit"]');
 const recoveryStatus = document.getElementById('accountStatus');
 const recoveryTitle = document.querySelector('#accountModal h2');
 const loginForm = document.getElementById('loginForm');
+const confirmRecoveryStep = document.getElementById('confirmRecoveryStep');
+const confirmRecoveryButton = document.getElementById('confirmRecoveryLink');
 let recoveryAuth = null;
 
 function showRecoveryView(title, message) {
@@ -302,18 +315,68 @@ function showRecoveryView(title, message) {
   recoveryStatus.textContent = message;
 }
 
+function clearRecoveryConfirmation() {
+  confirmRecoveryStep.hidden = true;
+  confirmRecoveryButton.onclick = null;
+}
+
 function restoreLoginView() {
+  clearRecoveryConfirmation();
   loginForm.hidden = false;
   recoveryTitle.textContent = 'Login';
 }
 
 function openResetRequest(message) {
+  clearRecoveryConfirmation();
   if (recoveryOpen) showRecoveryView('Recuperar senha', message);
   else document.getElementById('accountModal').classList.add('open');
   document.getElementById('accountLogin').style.display = 'block';
   document.getElementById('forgotPasswordOpen').hidden = true;
   requestReset.hidden = false;
   if (message) recoveryStatus.textContent = message;
+}
+
+function openNewPasswordForm(auth) {
+  recoveryAuth = auth;
+  clearRecoveryConfirmation();
+  showRecoveryView('Definir nova senha', 'E-mail verificado. Defina sua nova senha.');
+  resetPassword.hidden = false;
+  document.getElementById('recoveryNewPassword').focus();
+}
+
+function showRecoveryFailure(code) {
+  if (['otp_expired', 'flow_state_expired', 'flow_state_not_found'].includes(code)) {
+    openResetRequest('O link expirou ou já foi utilizado. Solicite um novo link.');
+  } else if (['pkce_code_verifier_not_found', 'bad_code_verifier'].includes(code)) {
+    openResetRequest('Abra o link no mesmo navegador em que pediu a recuperação ou solicite um novo.');
+  } else {
+    openResetRequest('Não foi possível validar este link. Solicite um novo link de recuperação.');
+  }
+}
+
+function awaitRecoveryConfirmation(tokenHash) {
+  // Opening the page does not consume the token. Email security scanners
+  // can preview a link, but verification requires a separate user action.
+  showRecoveryView('Recuperar senha', 'Confirme para continuar. Não será necessário informar seu e-mail novamente se o link for válido.');
+  confirmRecoveryStep.hidden = false;
+  confirmRecoveryButton.onclick = async () => {
+    if (recoveryStarting || !tokenHash) return;
+    recoveryStarting = true;
+    confirmRecoveryButton.disabled = true;
+    const credential = tokenHash;
+    tokenHash = null;
+    try {
+      const auth = getRecoveryClient();
+      const { data, error } = await auth.verifyOtp({ token_hash: credential, type: 'recovery' });
+      if (!error && data?.session?.user?.id) openNewPasswordForm(auth);
+      else showRecoveryFailure(error?.code);
+    } catch {
+      showRecoveryFailure();
+    } finally {
+      recoveryStarting = false;
+      confirmRecoveryButton.disabled = false;
+    }
+  };
 }
 
 document.getElementById('forgotPasswordOpen').onclick = () => {
@@ -390,6 +453,7 @@ resetPassword.onsubmit = async event => {
       return;
     }
     await closeRecovery().catch(() => {});
+    if (!currentUser) recoveryStatus.textContent = 'Senha redefinida. Entre usando a nova senha.';
     toast('Senha redefinida. Use a nova senha no próximo acesso.');
   } catch {
     toast('Não foi possível atualizar a senha agora. Tente novamente.');
@@ -656,10 +720,19 @@ async function initSupabase(){
     Promise.resolve().then(refreshAuth).catch(() => console.error('Falha ao atualizar sessão.'));
   });
   if (recoveryReturn) {
-    const { code, flowId, errorCode, failed } = recoveryCallback;
+    const callback = recoveryCallback;
     recoveryCallback = null;
-    showRecoveryView('Recuperar senha', 'Validando o link de recuperação…');
     document.getElementById('accountLogin').style.display = 'none';
+
+    if ('tokenHash' in callback) {
+      recoveryStarting = false;
+      if (callback.tokenHash) awaitRecoveryConfirmation(callback.tokenHash);
+      else showRecoveryFailure();
+      return;
+    }
+
+    showRecoveryView('Recuperar senha', 'Validando o link de recuperação…');
+    const { code, flowId, errorCode, failed } = callback;
     let failure = errorCode;
     try {
       if (code && !failed && !errorCode) {
@@ -677,17 +750,8 @@ async function initSupabase(){
       recoveryStarting = false;
     }
 
-    if (recoveryAuth) {
-      showRecoveryView('Definir nova senha', 'E-mail verificado. Defina sua nova senha.');
-      resetPassword.hidden = false;
-      document.getElementById('recoveryNewPassword').focus();
-    } else if (['otp_expired', 'flow_state_expired', 'flow_state_not_found'].includes(failure)) {
-      openResetRequest('O link expirou ou já foi utilizado. Solicite um novo link.');
-    } else if (['pkce_code_verifier_not_found', 'bad_code_verifier', 'validation_failed'].includes(failure)) {
-      openResetRequest('Abra o link no mesmo navegador em que pediu a recuperação ou solicite um novo.');
-    } else {
-      openResetRequest('Não foi possível validar a recuperação. Solicite um novo link e abra-o no mesmo navegador.');
-    }
+    if (recoveryAuth) openNewPasswordForm(recoveryAuth);
+    else showRecoveryFailure(failure);
     return;
   }
   await refreshAuth();
