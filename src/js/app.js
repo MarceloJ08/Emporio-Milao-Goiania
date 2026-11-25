@@ -1,10 +1,29 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0";
 const authProject = ["https://khbcqvuaqmzxlmaayfla.supabase.co", "sb_publishable_N_Hr_LRVWHs-zN7NU5zV7A_aZuU6Fu1"];
 const recoveryUrl = new URL('/?senha=recuperar', location.origin);
-const recoveryReturn = new URL(location.href).searchParams.get('senha') === 'recuperar'
-  || new URLSearchParams(location.hash.slice(1)).get('type') === 'recovery';
-let recoveryCode = recoveryReturn ? new URL(location.href).searchParams.get('code') : null;
+function readRecoveryReturn(url) {
+  const query = url.searchParams;
+  const fragment = new URLSearchParams(url.hash.slice(1));
+  const type = query.get('type') || fragment.get('type');
+  const code = query.get('code') || fragment.get('code');
+  const explicitReturn = query.get('senha') === 'recuperar' || type === 'recovery';
+  // Supabase may return a PKCE code to the Site URL without our route marker.
+  // An unmarked root code still needs the isolated recovery verifier.
+  const rootCode = url.pathname === '/' && query.has('code') && !type;
+  if (!explicitReturn && !rootCode) return null;
+
+  return {
+    code: !type || type === 'recovery' ? code : null,
+    flowId: query.get('sb_flow_id') || fragment.get('sb_flow_id'),
+    errorCode: query.get('error_code') || fragment.get('error_code'),
+    failed: query.has('error') || fragment.has('error'),
+  };
+}
+
+let recoveryCallback = readRecoveryReturn(new URL(location.href));
+const recoveryReturn = Boolean(recoveryCallback);
 let recoveryOpen = recoveryReturn;
+let recoveryStarting = recoveryReturn;
 if (recoveryReturn) history.replaceState(history.state, '', '/');
 
 const supa = createClient(...authProject, {
@@ -270,10 +289,27 @@ const resetPassword = document.getElementById('setNewPasswordForm');
 const requestResetButton = requestReset.querySelector('[type="submit"]');
 const savePasswordButton = resetPassword.querySelector('[type="submit"]');
 const recoveryStatus = document.getElementById('accountStatus');
+const recoveryTitle = document.querySelector('#accountModal h2');
+const loginForm = document.getElementById('loginForm');
 let recoveryAuth = null;
 
-function openResetRequest(message) {
+function showRecoveryView(title, message) {
   document.getElementById('accountModal').classList.add('open');
+  document.getElementById('accountRegister').style.display = 'none';
+  document.getElementById('accountSigned').style.display = 'none';
+  loginForm.hidden = true;
+  recoveryTitle.textContent = title;
+  recoveryStatus.textContent = message;
+}
+
+function restoreLoginView() {
+  loginForm.hidden = false;
+  recoveryTitle.textContent = 'Login';
+}
+
+function openResetRequest(message) {
+  if (recoveryOpen) showRecoveryView('Recuperar senha', message);
+  else document.getElementById('accountModal').classList.add('open');
   document.getElementById('accountLogin').style.display = 'block';
   document.getElementById('forgotPasswordOpen').hidden = true;
   requestReset.hidden = false;
@@ -289,6 +325,7 @@ document.getElementById('cancelPasswordRecovery').onclick = () => {
   document.getElementById('forgotPasswordOpen').hidden = false;
   if (recoveryOpen) {
     recoveryOpen = false;
+    restoreLoginView();
     refreshAuth().catch(() => {});
   }
 };
@@ -322,6 +359,7 @@ async function closeRecovery() {
   resetPassword.hidden = true;
   requestReset.hidden = true;
   document.getElementById('forgotPasswordOpen').hidden = false;
+  restoreLoginView();
   if (auth) {
     try { await auth.signOut({ scope: 'local' }); } catch { /* Best effort. */ }
   }
@@ -367,7 +405,7 @@ menuToggle.onclick=()=>{const links=document.getElementById('siteLinks');const o
 document.querySelectorAll('#siteLinks a').forEach(link=>link.addEventListener('click',()=>{if(currentCollection)closeCollection();document.getElementById('siteLinks').classList.remove('open');menuToggle.setAttribute('aria-expanded','false');menuToggle.textContent='Menu';}));
 document.querySelector('.logo').addEventListener('click',e=>{if(currentCollection){e.preventDefault();closeCollection();window.scrollTo({top:0,behavior:'smooth'});}});
 function dismissAccountModal() {
-  if (savePasswordButton.disabled) return;
+  if (recoveryStarting || savePasswordButton.disabled) return;
   document.getElementById('accountModal').classList.remove('open');
   if (recoveryOpen) closeRecovery().catch(() => {});
 }
@@ -618,29 +656,37 @@ async function initSupabase(){
     Promise.resolve().then(refreshAuth).catch(() => console.error('Falha ao atualizar sessão.'));
   });
   if (recoveryReturn) {
-    const code = recoveryCode;
-    recoveryCode = null;
+    const { code, flowId, errorCode, failed } = recoveryCallback;
+    recoveryCallback = null;
+    showRecoveryView('Recuperar senha', 'Validando o link de recuperação…');
+    document.getElementById('accountLogin').style.display = 'none';
+    let failure = errorCode;
     try {
-      if (code) {
+      if (code && !failed && !errorCode) {
         const auth = getRecoveryClient();
-        const { data, error } = await auth.exchangeCodeForSession(code);
+        const options = flowId ? { flowId } : undefined;
+        const { data, error } = await auth.exchangeCodeForSession(code, options);
+        // The SDK emits PASSWORD_RECOVERY on this isolated client. Its
+        // exchange result also identifies the verified recovery flow.
         if (!error && data?.redirectType === 'recovery' && data?.session?.user?.id) recoveryAuth = auth;
+        else failure = error?.code;
       }
     } catch {
-      // Invalid, expired or opened without the browser's verifier.
+      // Unavailable storage or network. Never log the callback credentials.
+    } finally {
+      recoveryStarting = false;
     }
+
     if (recoveryAuth) {
-      document.getElementById('accountModal').classList.add('open');
-      for (const id of ['accountLogin', 'accountRegister', 'accountSigned']) {
-        document.getElementById(id).style.display = 'none';
-      }
+      showRecoveryView('Definir nova senha', 'E-mail verificado. Defina sua nova senha.');
       resetPassword.hidden = false;
-      recoveryStatus.textContent = 'E-mail verificado. Defina sua nova senha.';
       document.getElementById('recoveryNewPassword').focus();
+    } else if (['otp_expired', 'flow_state_expired', 'flow_state_not_found'].includes(failure)) {
+      openResetRequest('O link expirou ou já foi utilizado. Solicite um novo link.');
+    } else if (['pkce_code_verifier_not_found', 'bad_code_verifier', 'validation_failed'].includes(failure)) {
+      openResetRequest('Abra o link no mesmo navegador em que pediu a recuperação ou solicite um novo.');
     } else {
-      document.getElementById('accountRegister').style.display = 'none';
-      document.getElementById('accountSigned').style.display = 'none';
-      openResetRequest('Link inválido, expirado ou aberto em outro navegador. Solicite um novo link.');
+      openResetRequest('Não foi possível validar a recuperação. Solicite um novo link e abra-o no mesmo navegador.');
     }
     return;
   }
