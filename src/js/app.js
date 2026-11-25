@@ -2,6 +2,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.119.0";
 import { bindEmailFeedback, createEmailPolicy, emailErrorKind, withEmailTimeout } from './email-requests.mjs';
 import { setupSignupConfirmation, signupReturnFrom } from './signup-confirmation.mjs';
 
+import { captchaErrorMessage, requestCaptcha } from './turnstile.mjs';
+
 const signupReturn = signupReturnFrom(new URL(location.href));
 
 let emailStorage;
@@ -308,8 +310,9 @@ async function handleRegistration(event, fields) {
     return;
   }
   const response = await signupFeedback.get(form.id)(async () => {
+    const captchaToken = await requestCaptcha(form, 'signup');
     const { data, error } = await supa.auth.signUp({
-      email, password, options: { data: { full_name: name }, emailRedirectTo: location.origin },
+      email, password, options: { data: { full_name: name }, emailRedirectTo: location.origin, captchaToken },
     });
     if (['user_already_exists', 'email_exists'].includes(error?.code)) return { kind: 'ok', message: signupPendingMessage };
     if (error) {
@@ -332,10 +335,56 @@ async function handleRegistration(event, fields) {
 }
 document.getElementById('registerForm').onsubmit=e=>handleRegistration(e,{name:'fullName',email:'email',password:'registerPassword'});
 document.getElementById('modalRegisterForm').onsubmit=e=>handleRegistration(e,{name:'modalFullName',email:'modalEmail',password:'modalRegisterPassword'});
-document.getElementById('loginForm').onsubmit=async e=>{
- e.preventDefault();const email=document.getElementById('loginEmail').value.trim().toLowerCase(),password=document.getElementById('loginPassword').value;if(!email||!password){toast('Informe e-mail e senha.');return;}
- const {error}=await supa.auth.signInWithPassword({email,password});if(error){const m=String(error.message||'').toLowerCase();if(error.status===429)toast('Muitas tentativas. Aguarde antes de tentar novamente.');else if(m.includes('email not confirmed'))toast('Este e-mail ainda não foi confirmado. Verifique sua caixa de entrada ou peça ao administrador para ajustar a confirmação.');else if(m.includes('invalid login credentials'))toast('E-mail ou senha incorretos. Se acabou de cadastrar, talvez seja necessário confirmar o e-mail.');else{console.error('Falha no login:',error);toast('Não foi possível entrar: '+(error.message||'erro de autenticação'));}return;}
- toast('Login realizado com sucesso.');document.getElementById('accountModal').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'});await refreshAuth();const routeParams=new URLSearchParams(location.search);if(routeParams.get('vendas')==='1')await openSalesPanel(true);else if(routeParams.get('admin')==='1'&&isAdmin){document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;document.getElementById('adminIdentity').textContent=currentUser.email||'Administrador';await loadAdminDashboard();}
+document.getElementById('loginForm').onsubmit = async event => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const button = form.querySelector('[type="submit"]');
+  if (button.disabled) return;
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) {
+    toast('Informe e-mail e senha.');
+    return;
+  }
+
+  const label = button.textContent;
+  button.disabled = true;
+  button.textContent = 'Entrando…';
+  form.setAttribute('aria-busy', 'true');
+  const modal = document.getElementById('accountModal');
+  try {
+    const captchaToken = await requestCaptcha(form, 'login');
+    const { error } = await supa.auth.signInWithPassword({ email, password, options: { captchaToken } });
+    if (error) {
+      const message = String(error.message || '').toLowerCase();
+      toast(captchaErrorMessage(error) || (
+        error.status === 429 ? 'Muitas tentativas. Aguarde antes de tentar novamente.'
+        : message.includes('email not confirmed') ? 'Este e-mail ainda não foi confirmado. Verifique sua caixa de entrada.'
+        : message.includes('invalid login credentials') ? 'E-mail ou senha incorretos. Se acabou de cadastrar, talvez seja necessário confirmar o e-mail.'
+        : 'Não foi possível entrar. Verifique a conexão e tente novamente.'
+      ));
+      return;
+    }
+
+    toast('Login realizado com sucesso.');
+    modal.classList.remove('open');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    await refreshAuth();
+    const routeParams = new URLSearchParams(location.search);
+    if (routeParams.get('vendas') === '1') await openSalesPanel(true);
+    else if (routeParams.get('admin') === '1' && isAdmin) {
+      document.body.classList.add('admin-mode');
+      document.getElementById('adminPage').hidden = false;
+      document.getElementById('adminIdentity').textContent = currentUser.email || 'Administrador';
+      await loadAdminDashboard();
+    }
+  } catch (error) {
+    toast(captchaErrorMessage(error) || 'Não foi possível concluir o acesso. Verifique a conexão e tente novamente.');
+  } finally {
+    button.disabled = false;
+    button.textContent = label;
+    form.removeAttribute('aria-busy');
+  }
 };
 const requestReset = document.getElementById('forgotPasswordForm');
 const resetPassword = document.getElementById('setNewPasswordForm');
@@ -442,7 +491,8 @@ requestReset.onsubmit = async event => {
     return;
   }
   await sendRecoveryEmail(async () => {
-    const { error } = await getRecoveryClient().resetPasswordForEmail(email, { redirectTo: recoveryUrl.href });
+    const captchaToken = await requestCaptcha(requestReset, 'recover');
+    const { error } = await getRecoveryClient().resetPasswordForEmail(email, { redirectTo: recoveryUrl.href, captchaToken });
     if (error && error.code !== 'user_not_found') return { kind: emailErrorKind(error) };
     return { kind: 'ok', message: 'Se for possível recuperar a conta, você receberá um link. Confira também o spam.' };
   }, 'Não foi possível solicitar o link de recuperação. Tente novamente mais tarde.');

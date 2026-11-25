@@ -1,5 +1,7 @@
 import { bindEmailFeedback, emailErrorKind } from './email-requests.mjs';
 
+import { requestCaptcha } from './turnstile.mjs';
+
 const storageKey = 'emporio:signup-pending';
 const pendingLifetime = 24 * 60 * 60 * 1000;
 const pendingCopy = 'Acesse sua caixa de entrada e confirme seu endereço de e-mail para concluir o cadastro.';
@@ -81,7 +83,9 @@ export function setupSignupConfirmation({ auth, policy, callback, recovery }) {
     if (!pending || panel.dataset.state === 'confirmed') return;
     const { email } = pending;
     await resend(async () => {
-      const { error } = await auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.origin } });
+      const captchaToken = await requestCaptcha(form, 'resend_signup');
+      if (pending?.email !== email || panel.dataset.state === 'confirmed') return { kind: 'cancelled' };
+      const { error } = await auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.origin, captchaToken } });
       if (error && !['user_not_found', 'user_already_exists', 'email_already_confirmed'].includes(error.code)) {
         return { kind: emailErrorKind(error) };
       }

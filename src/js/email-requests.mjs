@@ -1,3 +1,5 @@
+import { captchaErrorMessage } from './turnstile.mjs';
+
 const MINUTE = 60_000;
 const limits = {
   signup: { loading: 'Criando conta…' },
@@ -11,6 +13,7 @@ const limitMessage = 'Você atingiu o número máximo de solicitações. Por seg
 const connectionMessage = 'Não foi possível confirmar a solicitação. Verifique a conexão e a caixa de entrada antes de tentar de novo.';
 
 export function emailErrorKind(error) {
+  if (captchaErrorMessage(error)) return 'captcha';
   if (error?.status === 429 || ['over_email_send_rate_limit', 'over_request_rate_limit'].includes(error?.code)) return 'limit';
   if (error?.status === 0 || ['AuthRetryableFetchError', 'TimeoutError', 'AbortError', 'TypeError'].includes(error?.name)) return 'connection';
   return 'other';
@@ -68,7 +71,10 @@ export function createEmailPolicy({ storage, locks, now = Date.now } = {}) {
       try {
         let result;
         try { result = await task(); }
-        catch (error) { result = { kind: emailErrorKind(error) === 'other' ? 'connection' : emailErrorKind(error) }; }
+        catch (error) {
+          const kind = emailErrorKind(error);
+          result = { kind: kind === 'other' ? 'connection' : kind, message: captchaErrorMessage(error) };
+        }
         if (limits[operation].interval && (result.kind === 'ok' || result.kind === 'connection')) {
           const record = read(operation);
           write(operation, { ...record, times: [...recent(record, operation), now()] });
@@ -162,11 +168,13 @@ export function bindEmailFeedback(form, policy, operation) {
     let result;
     try { result = await policy.run(operation, task); }
     catch { result = { kind: 'connection' }; }
+    if (result.kind === 'cancelled') return result;
     feedback.textContent = result.message || ({
       limit: 'Limite de solicitações atingido. ' + limitMessage,
       cooldown: 'Aguarde antes de solicitar outro link.',
       busy: 'Já existe uma solicitação em andamento.',
       connection: connectionMessage,
+      captcha: captchaErrorMessage({ code: 'captcha_failed' }),
     }[result.kind] || fallbackMessage);
     return result;
   };
