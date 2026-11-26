@@ -1,0 +1,192 @@
+const { readFileSync } = require('node:fs');
+const assert = require('node:assert/strict');
+const { PGlite } = require(process.argv[2]);
+const migration = readFileSync('supabase/migrations/20261126120000_require_staff_aal2.sql','utf8');
+const fixture = readFileSync('tests/fixtures/mfa_phase2.sql','utf8');
+// Only synthetic fixtures are attested automatically. The reviewable draft
+// deliberately has no approval for any real catalog.
+const catalogQuery = /select md5\([\s\S]+?\) catalog;/.exec(migration)[0]
+  .replace('into actual_snapshot','as fingerprint');
+async function attestFixture(db, approveTransport = true) {
+ const { rows: [{ fingerprint }] } = await db.query(catalogQuery);
+ assert.match(fingerprint,/^[a-f0-9]{32}$/);
+ const attested = migration.replace('approved_snapshot text := null;', "approved_snapshot text := '" + fingerprint + "';");
+ return approveTransport ? attested.replace('approved_order_updates text := null;', "approved_order_updates text := 'polling';") : attested;
+}
+(async()=>{
+ const db=new PGlite();
+ await db.exec(fixture);
+ const followup = readFileSync('tests/fixtures/audit_mfa_phase2_followup.sql','utf8');
+ await db.exec('begin read only');
+ const audit = await db.exec(followup);
+ await db.exec('rollback');
+ assert.equal(audit.length,4);
+ assert.equal(Number(audit[2].rows[0].linked_accounts),2);
+ assert.equal(Number(audit[2].rows[0].verified_totp),1);
+ assert.equal(Number(audit[2].rows[1].verified_totp),1);
+ assert.equal(Number(audit[3].rows[0].configured_rows),0);
+ await assert.rejects(db.exec(migration), /catálogo sem revisão/);
+ await db.exec('rollback');
+ await assert.rejects(db.exec(await attestFixture(db, false)), /transporte de atualização de pedidos ainda não aprovado/);
+ await db.exec('rollback');
+ const approvedFixture = await attestFixture(db);
+ await db.exec(approvedFixture);
+ const user = id => '00000000-0000-0000-0000-00000000000'+id;
+ const session = id => '10000000-0000-0000-0000-00000000000'+id;
+ const call=async sql=>(await db.query(sql)).rows;
+ const role=async (id,aal,method='password',sessionId=session(id))=>{
+  await db.exec('reset role');
+  await db.query("select set_config('request.jwt.claims',$1,false)",[JSON.stringify({sub:user(id),session_id:sessionId,aal,amr:[{method}]})]);
+  await db.exec('set role authenticated');
+ };
+ const deny = async sql => assert.rejects(db.query(sql), error=>error.code==='42501');
+ await db.exec('set role anon');
+ assert.deepEqual(await call('select id from public.products'),[{id:1}]);
+ await deny('select public.account_mfa_requirements()');
+ await deny("insert into storage.objects values(2,'product-images')");
+ await db.exec('reset role');
+ for (const aal of ['aal1','aal2']) {
+  await db.exec('reset role');
+  await db.query('update auth.mfa_factors set status=$1 where user_id=$2',[aal==='aal1'?'unverified':'verified',user(1)]);
+  await role(1,aal);
+  assert.equal((await call('select public.create_order(8) as result'))[0].result,8);
+  assert.deepEqual(await call('select id from public.orders'),[{id:1}]);
+  await deny('select public.admin_finance_summary()');
+  await deny('select private.create_assisted_sale(8)');
+  if (aal === 'aal1') {
+   await call("insert into public.customer_carts(user_id) values(auth.uid())");
+   assert.equal((await call('select count(*)::int as total from public.customer_carts'))[0].total,1);
+   await deny("insert into public.customer_carts(user_id) values('00000000-0000-0000-0000-000000000004')");
+   assert.equal((await call('select public.create_order(99) as result'))[0].result,99);
+   assert.deepEqual(await call('select id from public.orders where id=99'),[{id:99}]);
+   await db.exec('reset role; delete from public.orders where id=99');
+  }
+ }
+ await role(1,'aal1');
+ await deny('select public.create_order(8)');
+ for (const id of [2,3,5]) {
+  await role(id,'aal1');
+  assert.equal((await call("select public.account_mfa_requirements()->>'ready' as ready"))[0].ready,'false');
+  assert.deepEqual(await call('select id from public.orders'),[]);
+  assert.deepEqual(await call('select order_id from public.order_items'),[]);
+  await deny('select public.create_order(8)');
+  await deny('select public.create_assisted_sale(8)');
+  await deny('select public.create_assisted_sale(8, 2)');
+  await deny('select private.create_assisted_sale(8, 2)');
+  await deny('select public.create_assisted_sale_for_assistant(8)');
+  await deny('select public.admin_finance_summary()');
+  await deny("insert into storage.objects values(1,'product-images')");
+ }
+ await role(5,'aal1');
+ assert.deepEqual((await call('select public.account_mfa_requirements() as status'))[0].status,
+  {admin:true,sales:false,ready:false});
+ await db.exec('reset role');
+ await db.query("insert into auth.mfa_factors(id,user_id,status,factor_type) values($1,$2,'verified','totp')",
+  ['20000000-0000-0000-0000-000000000005',user(5)]);
+ await db.query("update auth.sessions set aal='aal2',factor_id=$1 where id=$2",
+  ['20000000-0000-0000-0000-000000000005',session(5)]);
+ await role(5,'aal2');
+ assert.ok((await call('select public.admin_finance_summary() as summary'))[0].summary.ok);
+ await role(2,'aal2');
+ assert.equal((await call('select public.create_assisted_sale(8) as result'))[0].result,9);
+ assert.equal((await call('select public.create_assisted_sale(8,2) as result'))[0].result,10);
+ assert.equal((await call('select public.create_assisted_sale_for_assistant(8) as result'))[0].result,8);
+ assert.deepEqual(await call('select id from public.orders'),[{id:2}]);
+ assert.deepEqual(await call('select id from public.store_inventory'),[{id:1}]);
+ await deny('select public.admin_manage_sales_staff()');
+ await role(3,'aal2');
+ assert.deepEqual(await call('select id from public.orders order by id'),[{id:1},{id:2}]);
+ assert.deepEqual(await call('select * from public.admin_list_sales_staff()'),[{value:1}]);
+ await call('select public.register_stock_movement()');
+ await call("insert into storage.objects values(1,'product-images')");
+ await role(3,'aal2','otp');
+ await deny('select public.admin_finance_summary()');
+ await role(3,'aal2','password','malformed-session-id');
+ await deny('select public.admin_finance_summary()');
+ await db.exec('reset role');
+ await db.query("update auth.sessions set not_after=now()-interval '1 second' where id=$1",[session(3)]);
+ await role(3,'aal2');
+ await deny('select public.admin_finance_summary()');
+ await db.exec('reset role');
+ await db.query('update auth.sessions set not_after=null where id=$1',[session(3)]);
+ await db.query('delete from private.admin_users where user_id=$1',[user(3)]);
+ await role(3,'aal2');
+ await deny('select public.admin_finance_summary()');
+ await db.exec('reset role');
+ await db.query('insert into private.admin_users values ($1)',[user(3)]);
+ await db.exec("reset role; delete from auth.mfa_factors where user_id='00000000-0000-0000-0000-000000000003'");
+ await role(3,'aal2');
+ await deny('select public.admin_finance_summary()');
+ await db.exec("reset role; update private.sales_staff set active=false where email='2@local.test'");
+ for (const aal of ['aal1','aal2']) {
+  await role(2,aal);
+  await deny('select public.create_assisted_sale(8)');
+  assert.deepEqual(await call('select id from public.orders'),[]);
+  assert.deepEqual(await call('select order_id from public.order_items'),[]);
+ }
+ console.log('PASS BUG-001: vendedor revogado em AAL1 e AAL2 não lê pedidos atribuídos nem os itens.');
+ assert.equal((await call('select public.create_order(8) as result'))[0].result,8);
+ await db.exec('reset role');
+ await db.query('delete from auth.mfa_factors where user_id=$1',[user(1)]);
+ await role(1,'aal2');
+ await deny('select public.create_order(8)');
+ await db.exec('reset role');
+ await db.query("update auth.sessions set aal='aal1',factor_id=null where id=$1",[session(1)]);
+ await role(1,'aal1');
+ assert.equal((await call('select public.create_order(8) as result'))[0].result,8);
+ await db.exec('reset role');
+ await db.query('delete from auth.sessions where id=$1',[session(1)]);
+ await role(1,'aal2');
+ await deny('select public.create_order(8)');
+ assert.deepEqual(await call('select id from public.orders'),[]);
+ await db.exec('reset role');
+ assert.deepEqual(await call("select 1 from pg_publication_tables where pubname='supabase_realtime' and tablename='orders'"),[]);
+ const off=new PGlite();
+ await off.exec(fixture);
+ await off.exec('create view public.unreviewed as select * from public.orders; grant select on public.unreviewed to authenticated;');
+ await assert.rejects(off.exec(await attestFixture(off)), /view exposta exige revisão/);
+ await off.exec('rollback');
+ assert.deepEqual((await off.query("select to_regprocedure('public.account_mfa_requirements()') as f")).rows,[{f:null}]);
+ await off.exec('drop view public.unreviewed;');
+ await off.exec("delete from auth.users where id='00000000-0000-0000-0000-000000000005'");
+ const auditWithUnlinkedAdmin = await off.exec(followup);
+ assert.equal(Number(auditWithUnlinkedAdmin[2].rows[0].authorizations),2);
+ assert.equal(Number(auditWithUnlinkedAdmin[2].rows[0].linked_accounts),1);
+ await off.exec("update auth.mfa_factors set status='unverified' where user_id='00000000-0000-0000-0000-000000000003'");
+ await assert.rejects(off.exec(approvedFixture), /pelo menos um administrador com TOTP verificado/);
+ await off.exec('rollback');
+ await off.exec("update auth.mfa_factors set status='verified'");
+ await off.exec("alter publication supabase_realtime set (publish='insert,update')");
+ await assert.rejects(off.exec(approvedFixture), /catálogo sem revisão ou diferente/);
+ await off.exec('rollback');
+ await off.exec("alter publication supabase_realtime set (publish='insert,update,delete,truncate')");
+ await off.exec("alter table public.orders replica identity full");
+ await assert.rejects(off.exec(approvedFixture), /catálogo sem revisão ou diferente/);
+ await off.exec('rollback');
+ await off.exec("alter table public.orders replica identity default");
+ await off.exec("alter table auth.sessions alter column aal set not null");
+ await assert.rejects(off.exec(approvedFixture), /catálogo sem revisão ou diferente/);
+ await off.exec('rollback');
+ await off.exec("alter table auth.sessions alter column aal drop not null");
+ await off.exec("update storage.buckets set public=false where id='product-images'");
+ await assert.rejects(off.exec(approvedFixture), /catálogo sem revisão ou diferente/);
+ await off.exec('rollback');
+ await off.exec("update storage.buckets set public=true where id='product-images'");
+ await off.exec("drop function public.create_assisted_sale(int,int)");
+ await assert.rejects(off.exec(await attestFixture(off)), /assinaturas de create_assisted_sale divergem/);
+ await off.exec('rollback');
+ await off.exec("create function public.create_assisted_sale(p_value int,p_extra int) returns int language sql security invoker as 'select private.create_assisted_sale($1,$2)'");
+ const restoredFixture = await attestFixture(off);
+ await off.exec("alter function public.admin_finance_summary() reset search_path");
+ await assert.rejects(off.exec(restoredFixture), /catálogo sem revisão ou diferente/);
+ await off.exec('rollback');
+ await assert.rejects(off.exec(await attestFixture(off)), /SECURITY DEFINER sem search_path vazio/);
+ await off.exec('rollback');
+ await off.exec("alter function public.admin_finance_summary() set search_path = ''");
+ await off.exec("create or replace function public.create_assisted_sale(p_value int, p_extra int) returns int language sql as 'select private.create_assisted_sale(p_extra,p_value)'");
+ await assert.rejects(off.exec(await attestFixture(off)), /implementação não reconhecida/);
+ await off.exec('rollback');
+ await off.close();
+ await db.close();
+ console.log('PASS PostgreSQL fixture: role/AAL matrix, grants/RLS/RPC, storage, recovery AMR, stale tokens, revocation, Realtime and atomic preflight');
+})().catch(error=>{console.error(error.message);process.exitCode=1;});

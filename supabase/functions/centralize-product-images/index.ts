@@ -8,15 +8,14 @@ Deno.serve(async(req:Request)=>{
  if(req.method!=="POST")return respond({error:"Método não permitido."},405);
  const authorization=req.headers.get("Authorization");
  if(!authorization?.startsWith("Bearer "))return respond({error:"Autenticação necessária."},401);
- const supabaseUrl=Deno.env.get("SUPABASE_URL"),anonKey=Deno.env.get("SUPABASE_ANON_KEY"),serviceRoleKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
- if(!supabaseUrl||!anonKey||!serviceRoleKey)return respond({error:"Configuração interna indisponível."},500);
+ const supabaseUrl=Deno.env.get("SUPABASE_URL"),anonKey=Deno.env.get("SUPABASE_ANON_KEY");
+ if(!supabaseUrl||!anonKey)return respond({error:"Configuração interna indisponível."},500);
  const userClient=createClient(supabaseUrl,anonKey,{global:{headers:{Authorization:authorization}},auth:{persistSession:false,autoRefreshToken:false}});
  const {data:userData,error:userError}=await userClient.auth.getUser();
  if(userError||!userData.user)return respond({error:"Sessão inválida ou expirada."},401);
  const {data:isAdmin,error:adminError}=await userClient.rpc("is_admin");
  if(adminError||isAdmin!==true)return respond({error:"Apenas administradores podem centralizar imagens."},403);
- const admin=createClient(supabaseUrl,serviceRoleKey,{auth:{persistSession:false,autoRefreshToken:false}});
- const {data:products,error:productsError}=await admin.from("products").select("id,name,image_url,image_alt").not("image_url","is",null).order("name").limit(150);
+ const {data:products,error:productsError}=await userClient.from("products").select("id,name,image_url,image_alt").not("image_url","is",null).order("name").limit(150);
  if(productsError)return respond({error:"Não foi possível consultar o catálogo."},500);
  const storageBase=supabaseUrl+"/storage/v1/object/public/product-images/";
  let migrated=0,skipped=0;const errors:Array<{product:string;reason:string}>=[];
@@ -36,11 +35,13 @@ Deno.serve(async(req:Request)=>{
    const declaredSize=Number(response.headers.get("content-length")||0);if(declaredSize>8388608)throw new Error("Imagem excede 8 MB");
    const bytes=new Uint8Array(await response.arrayBuffer());if(!bytes.length||bytes.length>8388608)throw new Error("Imagem vazia ou maior que 8 MB");
    const path="products/"+product.id+"."+extension;
-   const {error:uploadError}=await admin.storage.from("product-images").upload(path,bytes,{upsert:true,contentType,cacheControl:"31536000"});
+   const {error:uploadError}=await userClient.storage.from("product-images").upload(path,bytes,{upsert:true,contentType,cacheControl:"31536000"});
    if(uploadError)throw new Error("Falha ao gravar no armazenamento");
-   const publicUrl=admin.storage.from("product-images").getPublicUrl(path).data.publicUrl;
-   const {error:updateError}=await admin.from("products").update({image_url:publicUrl,image_alt:product.image_alt||product.name}).eq("id",product.id);
-   if(updateError)throw new Error("Falha ao atualizar o cadastro do produto");
+   const publicUrl=userClient.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+   const {data:updatedProduct,error:updateError}=await userClient.from("products")
+    .update({image_url:publicUrl,image_alt:product.image_alt||product.name})
+    .eq("id",product.id).select("id").maybeSingle();
+   if(updateError||updatedProduct?.id!==product.id)throw new Error("Falha ao atualizar o cadastro do produto");
    migrated++;
   }catch(error){errors.push({product:product.id,reason:error instanceof Error?error.message:"Falha desconhecida"});}
  }

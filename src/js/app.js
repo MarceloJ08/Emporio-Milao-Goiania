@@ -85,9 +85,19 @@ const mfaSettings = setupMfaSettings({
   auth: supa.auth,
   panel: document.getElementById('mfaSettings'),
   toggle: mfaSettingsToggle,
-  refresh: refreshAuth,
+  refresh: async () => {
+    if (await refreshAuth() && mfaEnrollmentPending) {
+      mfaEnrollmentPending = false;
+      await finishLogin();
+    }
+  },
 });
-mfaSettingsToggle.onclick = () => { if (currentUser) mfaSettings.open(currentUser.id); };
+let mfaEnrollmentUserId;
+let mfaEnrollmentPending = false;
+mfaSettingsToggle.onclick = () => {
+  const userId = currentUser?.id || mfaEnrollmentUserId;
+  if (userId) mfaSettings.open(userId);
+};
 
 let recoveryClient;
 function getRecoveryClient() {
@@ -122,8 +132,11 @@ let isSalesStaff = false;
 const accountPanels = document.getElementById('accountPanels');
 const salesOpenButton = document.getElementById('salesOpenBtn');
 const adminOpenButton = document.getElementById('adminOpenBtn');
-let adminRealtimeChannel = null;
+const adminRefreshInterval = 20_000;
 let adminRefreshTimer = null;
+let adminRefreshDueAt = null;
+let adminRefreshInFlight = false;
+let adminDashboardRequest = 0;
 let activeAdminArea = 'finance';
 async function loadProducts(){
   const {data,error}=await supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,description,image_url,image_alt').eq('active',true).order('name');
@@ -173,14 +186,40 @@ async function refreshAuth(){
   if (recoveryOpen) return;
   const assurance = await readAssurance(supa.auth);
   if (recoveryOpen) return;
-  const session = assurance.session;
-  if (assurance.state === 'challenge' || assurance.state === 'unavailable') {
+  let session = assurance.session;
+  let staffSetupRequired = false;
+  let requirementsUnavailable = false;
+  if (session) {
+    const { data, error } = await supa.rpc('account_mfa_requirements');
+    if (recoveryOpen) return;
+    requirementsUnavailable = Boolean(error) || typeof data?.ready !== 'boolean';
+    staffSetupRequired = !requirementsUnavailable && !data.ready
+      && (data.admin === true || data.sales === true) && assurance.level === 'aal1';
+    if (!data?.ready && !staffSetupRequired) requirementsUnavailable = true;
+  }
+
+  const modal = document.getElementById('accountModal');
+  const enrollmentUserId = staffSetupRequired ? session.user.id : null;
+  const newEnrollment = enrollmentUserId && enrollmentUserId !== mfaEnrollmentUserId;
+  mfaEnrollmentUserId = enrollmentUserId;
+  if (staffSetupRequired) mfaEnrollmentPending = true;
+  else if (assurance.state === 'signed-out') mfaEnrollmentPending = false;
+  modal.classList.toggle('mfa-required', staffSetupRequired);
+  const staffNotice = document.getElementById('mfaStaffNotice');
+  staffNotice.hidden = !staffSetupRequired;
+  if (staffSetupRequired || requirementsUnavailable) session = null;
+
+  if (assurance.state === 'challenge' || assurance.state === 'unavailable' || requirementsUnavailable) {
+    if (isAdminDashboardOpen()) stopAdminRefresh();
     document.body.classList.remove('admin-mode', 'sales-mode');
     document.getElementById('adminPage').hidden = true;
     mfaChallenge.show({
       auth: supa.auth,
       userId: assurance.userId,
-      retry: async () => { if (await refreshAuth()) await finishLogin(); },
+      retry: async () => {
+        if (requirementsUnavailable) await supa.auth.refreshSession();
+        if (await refreshAuth()) await finishLogin();
+      },
       cancel: async () => {
         const { error } = await supa.auth.signOut({ scope: 'local' });
         if (error) throw error;
@@ -189,8 +228,11 @@ async function refreshAuth(){
       verified: async () => { if (await refreshAuth()) await finishLogin(); },
     });
   } else mfaChallenge.close(supa.auth);
+  if (!session && isAdminDashboardOpen()) closeAdminPage();
+  await signupConfirmation.check(session);
+  if (recoveryOpen) return;
   const nextUser=session?.user||null;
-  mfaSettings.retain(nextUser?.id);
+  mfaSettings.retain(nextUser?.id || mfaEnrollmentUserId);
   const changed=currentUser?.id!==nextUser?.id;
   currentUser=nextUser;isAdmin=false;isSalesStaff=false;currentProfile=null;
   accountPanels.hidden = true;
@@ -200,6 +242,7 @@ async function refreshAuth(){
     const {data:adminData,error:adminError}=await supa.rpc('is_admin');
     isAdmin=!adminError && adminData===true;
     if(adminError)console.error('Falha ao verificar permissão ADM:',adminError);
+    if (!isAdmin && isAdminDashboardOpen()) closeAdminPage();
     const {data:salesData,error:salesError}=await supa.rpc('is_sales_staff');
     isSalesStaff=!salesError&&salesData===true;
     if(salesError)console.error('Falha ao verificar permissão de vendas:',salesError);
@@ -234,11 +277,23 @@ async function refreshAuth(){
     if(changed)await loadCartForUser(currentUser);
   }else{
     document.getElementById('accountStatus').textContent='Entre com seu e-mail e senha ou crie sua conta.';document.getElementById('accountBtn').textContent='Login';
-    document.getElementById('accountLogin').style.display='block';
-    document.getElementById('accountRegister').style.display='block';
+    document.getElementById('accountLogin').style.display=staffSetupRequired?'none':'block';
+    document.getElementById('accountRegister').style.display=staffSetupRequired?'none':'block';
     document.getElementById('accountSigned').style.display='none';
     document.getElementById('customerOrders').innerHTML='';
     if(changed)await loadCartForUser(null);
+  }
+  if (staffSetupRequired) {
+    document.body.classList.remove('admin-mode', 'sales-mode');
+    document.getElementById('adminPage').hidden = true;
+    document.getElementById('accountSigned').style.display = 'block';
+    document.getElementById('accountSettings').style.display = 'block';
+    document.getElementById('accountBtn').textContent = 'Minha conta';
+    modal.classList.add('open');
+    if (newEnrollment) {
+      staffNotice.focus();
+      mfaSettings.open(mfaEnrollmentUserId);
+    }
   }
   return session;
 }
@@ -673,8 +728,8 @@ resetPassword.onsubmit = async event => {
 
 document.getElementById('logoutBtn').onclick=async()=>{const {error}=await supa.auth.signOut();if(error){toast(error.message);return;}toast('Você saiu da sua conta.');await refreshAuth();};
 document.getElementById('accountBtn').onclick=async()=>{
-  if (signupConfirmation.showIfPending()) return;
   await refreshAuth();
+  if (mfaChallenge.isOpen() || mfaEnrollmentUserId || signupConfirmation.showIfPending()) return;
   document.getElementById('accountModal').classList.add('open');
 };
 const menuToggle=document.getElementById('mobileMenuToggle');
@@ -682,7 +737,7 @@ menuToggle.onclick=()=>{const links=document.getElementById('siteLinks');const o
 document.querySelectorAll('#siteLinks a').forEach(link=>link.addEventListener('click',()=>{if(currentCollection)closeCollection();document.getElementById('siteLinks').classList.remove('open');menuToggle.setAttribute('aria-expanded','false');menuToggle.textContent='Menu';}));
 document.querySelector('.logo').addEventListener('click',e=>{if(currentCollection){e.preventDefault();closeCollection();window.scrollTo({top:0,behavior:'smooth'});}});
 function dismissAccountModal() {
-  if (recoveryStarting || savePasswordButton.disabled || mfaChallenge.isOpen()) return;
+  if (recoveryStarting || savePasswordButton.disabled || mfaChallenge.isOpen() || mfaEnrollmentUserId) return;
   mfaSettings.close();
   document.getElementById('accountModal').classList.remove('open');
   if (recoveryOpen) closeRecovery().catch(() => {});
@@ -702,13 +757,15 @@ async function loadStoreSettings(){
  const hours=document.getElementById('hoursList');if(hours&&data.opening_hours){hours.innerHTML=data.opening_hours.split('|').map(line=>{const i=line.indexOf(':');return i>0?'<div class="hours-row"><span>'+escapeHtml(line.slice(0,i).trim())+'</span><b>'+escapeHtml(line.slice(i+1).trim())+'</b></div>':'<div class="hours-row">'+escapeHtml(line.trim())+'</div>';}).join('');}
 }
 function closeAdminPage(){
+ stopAdminRefresh();
+ document.getElementById('adminContent').replaceChildren();
  document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;document.getElementById('adminRefresh').style.display='';const salesTitle=document.querySelector('.admin-title-row h1'),salesSubtitle=document.querySelector('.admin-title-row p');if(salesTitle)salesTitle.textContent='Painel administrativo';if(salesSubtitle)salesSubtitle.textContent='Visão financeira, pedidos, pagamentos e movimentação do galpão.';
  const p=new URLSearchParams(location.search);p.delete('admin');p.delete('vendas');history.pushState({},'',location.pathname+(p.toString()?'?'+p.toString():'')+location.hash);
 }
 async function openAdminPanel(fromRoute=false){
  if(recoveryOpen)return;
  const session = await refreshAuth();
- if(mfaChallenge.isOpen())return;
+ if(mfaChallenge.isOpen() || mfaEnrollmentUserId)return;
  if(!session?.user){toast('Entre com a conta administrativa para continuar.');document.getElementById('accountModal').classList.add('open');return;}
  const {data:allowed,error}=await supa.rpc('is_admin');isAdmin=!error&&allowed===true;
  if(!isAdmin){toast(error?'Não foi possível validar o acesso.':'Esta conta não possui permissão administrativa.');return;}
@@ -721,11 +778,12 @@ async function openAdminPanel(fromRoute=false){
 async function openSalesPanel(fromRoute=false){
  if(recoveryOpen)return;
  const session = await refreshAuth();
- if(mfaChallenge.isOpen())return;
+ if(mfaChallenge.isOpen() || mfaEnrollmentUserId)return;
  if(!session?.user){document.getElementById('accountModal').classList.add('open');toast('Entre com o e-mail autorizado pela administração para lançar vendas.');return;}
  const {data:allowed,error}=await supa.rpc('is_sales_staff');
  if(error||allowed!==true){toast('Este e-mail não possui acesso ao lançamento de vendas. Solicite liberação ao administrador.');return;}
  document.getElementById('accountModal').classList.remove('open');
+ stopAdminRefresh();
  document.body.classList.add('admin-mode','sales-mode');document.getElementById('adminPage').hidden=false;
  const salesTitle=document.querySelector('.admin-title-row h1'),salesSubtitle=document.querySelector('.admin-title-row p');if(salesTitle)salesTitle.textContent='Central de atendimento';if(salesSubtitle)salesSubtitle.textContent='Consulte produtos, monte orçamentos e registre pedidos diretamente no financeiro da loja.';document.getElementById('adminRefresh').style.display='none';
  document.getElementById('adminIdentity').textContent=session.user.email||'Atendimento';
@@ -787,21 +845,88 @@ async function loadMySales(){
  el.innerHTML=(data||[]).map(o=>'<article class="admin-order-card"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+' · '+brl(Number(o.total_amount))+'</b><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+escapeHtml(o.customer_name)+' · '+escapeHtml(o.store_locations?.name||'Unidade')+'</small><p>'+escapeHtml((o.order_items||[]).map(i=>i.quantity+'× '+i.product_name+' · '+brl(Number(i.unit_price))+' un.').join(' | '))+'</p><span class="admin-pill">'+(o.payment_status==='paid'?'Pago':'Pendente')+'</span></article>').join('')||'<p>Nenhuma venda lançada por este usuário.</p>';
 }
 
-function ensureAdminRealtime(){
- if(adminRealtimeChannel||!supa)return;
- adminRealtimeChannel=supa.channel('admin-orders-live')
-  .on('postgres_changes',{event:'*',schema:'public',table:'orders'},()=>{
-   if(!isAdmin||!document.body.classList.contains('admin-mode'))return;
-   clearTimeout(adminRefreshTimer);
-   adminRefreshTimer=setTimeout(()=>{
-    if(isAdmin&&document.body.classList.contains('admin-mode'))loadAdminDashboard();
-   },450);
-  })
-  .subscribe(status=>{if(status==='CHANNEL_ERROR'||status==='TIMED_OUT')console.warn('Canal de atualização ao vivo indisponível:',status);});
+function isAdminDashboardOpen() {
+ return document.body.classList.contains('admin-mode') && !document.body.classList.contains('sales-mode')
+   && !document.getElementById('adminPage').hidden;
 }
-async function loadAdminDashboard(){
- ensureAdminRealtime();
- const content=document.getElementById('adminContent');if(isAdmin){const identity=document.getElementById('adminIdentity');if(identity)identity.textContent='Sr. Luiz · Proprietário';}content.innerHTML='<p>Carregando dados do negócio...</p>';
+
+function setAdminPollStatus(message = '') {
+ const status = document.getElementById('adminPollStatus');
+ status.textContent = message;
+ status.hidden = !message;
+}
+
+function pauseAdminRefresh() {
+ clearTimeout(adminRefreshTimer);
+ adminRefreshTimer = null;
+}
+
+function stopAdminRefresh() {
+ pauseAdminRefresh();
+ adminRefreshDueAt = null;
+ adminDashboardRequest++;
+ setAdminPollStatus();
+}
+
+function canRefreshAdminOrders() {
+ return ['orders', 'finance'].includes(activeAdminArea) &&
+   !document.activeElement?.closest('#adminContent form, #adminContent select');
+}
+
+function scheduleAdminRefresh() {
+ if (!isAdminDashboardOpen()) return;
+ adminRefreshDueAt ??= Date.now() + adminRefreshInterval;
+ if (document.hidden || adminRefreshInFlight || adminRefreshTimer !== null) return;
+ adminRefreshTimer = setTimeout(refreshAdminOnTimer, Math.max(0, adminRefreshDueAt - Date.now()));
+}
+
+async function refreshAdminOnTimer() {
+ adminRefreshTimer = null;
+ if (!isAdminDashboardOpen() || document.hidden) return;
+ adminRefreshInFlight = true;
+ const dueAt = adminRefreshDueAt;
+ let renewed = false;
+ try {
+  const { data, error } = await supa.rpc('is_admin');
+  if (!isAdminDashboardOpen() || adminRefreshDueAt !== dueAt) return;
+  if (error || data !== true) {
+   closeAdminPage();
+   if (error) toast('Não foi possível confirmar a autorização do painel.');
+   await refreshAuth();
+   return;
+  }
+  renewed = true;
+  if (!document.hidden && canRefreshAdminOrders()) await loadAdminDashboard({background:true});
+ } catch {
+  if (!isAdminDashboardOpen() || adminRefreshDueAt !== dueAt) return;
+  if (!renewed) {
+   closeAdminPage();
+   toast('Não foi possível confirmar a autorização do painel.');
+  } else setAdminPollStatus('Não foi possível atualizar os pedidos. Nova tentativa em instantes.');
+ } finally {
+  adminRefreshInFlight = false;
+  if (adminRefreshDueAt === dueAt) adminRefreshDueAt = Date.now() + adminRefreshInterval;
+  scheduleAdminRefresh();
+ }
+}
+
+function resumeAdminRefresh() {
+ pauseAdminRefresh();
+ scheduleAdminRefresh();
+}
+document.addEventListener('visibilitychange', () => {
+ if (document.hidden) pauseAdminRefresh();
+ else resumeAdminRefresh();
+});
+window.addEventListener('focus', resumeAdminRefresh);
+
+async function loadAdminDashboard({background = false} = {}){
+ if (!isAdminDashboardOpen()) return;
+ scheduleAdminRefresh();
+ const content=document.getElementById('adminContent');
+ const request = ++adminDashboardRequest;
+ const area = activeAdminArea;
+ if (!background) content.innerHTML='<p>Carregando dados do negócio...</p>';
  const [summary,or,pr,cr,ir,mr,storesRes,storeInvRes,storeMovesRes,staffRes]=await Promise.all([
   supa.rpc('admin_finance_summary'),
   supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,payment_status,status,total_amount,subtotal_amount,discount_amount,sales_channel,seller_name,seller_email,store_id,created_at,store_locations(name),order_items(product_name,quantity,unit_price,list_unit_price,discount_amount,line_total)').order('created_at',{ascending:false}).limit(250),
@@ -814,8 +939,15 @@ async function loadAdminDashboard(){
   supa.from('store_inventory_movements').select('id,store_id,product_id,movement_type,quantity,note,created_at,store_locations(name),products(name)').order('created_at',{ascending:false}).limit(80),
   supa.rpc('admin_list_sales_staff')
  ]);
+ if (request !== adminDashboardRequest || !isAdminDashboardOpen()) return;
+ if (background && (document.hidden || activeAdminArea !== area || !canRefreshAdminOrders())) return;
  const failure=[summary,or,pr,cr,ir,mr,storesRes,storeInvRes,storeMovesRes,staffRes].find(x=>x.error);
- if(failure){content.innerHTML='<div class="admin-empty">Não foi possível carregar os dados: '+escapeHtml(failure.error.message)+'</div>';return;}
+ if (failure) {
+  if (background) setAdminPollStatus('Não foi possível atualizar os pedidos. Nova tentativa em instantes.');
+  else content.innerHTML='<div class="admin-empty">Não foi possível carregar os dados: '+escapeHtml(failure.error.message)+'</div>';
+  return;
+ }
+ setAdminPollStatus();
  const stats=summary.data||{},orders=or.data||[],profiles=pr.data||[],productRows=cr.data||[],inventory=ir.data||[],movements=mr.data||[],stores=storesRes.data||[],storeInventory=storeInvRes.data||[],storeMovements=storeMovesRes.data||[],salesStaff=staffRes.data||[];
  const stock={};inventory.forEach(x=>stock[x.product_id]=Number(x.quantity));
  const methodLabels={pix:'Pix',dinheiro:'Dinheiro',cartao_entrega:'Cartão na entrega'};
@@ -978,15 +1110,8 @@ document.getElementById('avatarForm').onsubmit=async e=>{
 
 
 async function initSupabase(){
-  supa.auth.onAuthStateChange((event, session) => {
-    setTimeout(async () => {
-      try {
-        const ready = await refreshAuth();
-        if (ready?.access_token === session?.access_token && ['SIGNED_IN', 'USER_UPDATED'].includes(event)) {
-          await signupConfirmation.check(session);
-        }
-      } catch { /* The account stays gated if the session cannot be checked. */ }
-    }, 0);
+  supa.auth.onAuthStateChange(() => {
+    setTimeout(() => refreshAuth().catch(() => {}), 0);
   });
   if (recoveryReturn) {
     const callback = recoveryCallback;
@@ -1024,8 +1149,8 @@ async function initSupabase(){
     return;
   }
   await refreshAuth();
-  if (mfaChallenge.isOpen()) return;
-  await signupConfirmation.initial().catch(() => {});
+  if (mfaChallenge.isOpen() || mfaEnrollmentUserId) return;
+  signupConfirmation.initial();
   if(new URLSearchParams(location.search).get('vendas')==='1'){await openSalesPanel(true);return;}
   if(new URLSearchParams(location.search).get('admin')==='1'){if(isAdmin){document.body.classList.add('admin-mode');document.getElementById('adminPage').hidden=false;await loadAdminDashboard();}else{history.replaceState({},'',location.pathname);document.getElementById('accountModal').classList.add('open');toast('Entre com uma conta autorizada para acessar o ADM.');}}
 }

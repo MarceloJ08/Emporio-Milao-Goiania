@@ -29,7 +29,8 @@ export function setupSignupConfirmation({ auth, policy, callback, recovery }) {
   const landingForm = document.getElementById('registerForm');
   const resend = bindEmailFeedback(form, policy, 'confirmation');
   let pending = null;
-  let busy = false;
+  let activeToken = null;
+  let checkingToken = null;
 
   function save(value) {
     pending = value;
@@ -62,14 +63,26 @@ export function setupSignupConfirmation({ auth, policy, callback, recovery }) {
     title.focus();
   }
 
-  function returnToLogin(focus = true) {
-    const pendingAddress = pending?.email;
-    save(null);
+  function resetCallback() {
     callback.token = null;
     callback.explicit = false;
     callback.expired = false;
+  }
+
+  function hideConfirmation() {
     panel.hidden = true;
+    panel.dataset.state = '';
+    address.hidden = true;
+    address.textContent = '';
+    form.hidden = true;
     modal.classList.remove('confirmation-open');
+  }
+
+  function returnToLogin(focus = true) {
+    const pendingAddress = pending?.email;
+    save(null);
+    resetCallback();
+    hideConfirmation();
     if (focus) {
       const login = document.getElementById('loginEmail');
       if (pendingAddress) login.value = pendingAddress;
@@ -80,11 +93,11 @@ export function setupSignupConfirmation({ auth, policy, callback, recovery }) {
   document.getElementById('signupConfirmationLogin').onclick = () => returnToLogin();
   form.onsubmit = async event => {
     event.preventDefault();
-    if (!pending || panel.dataset.state === 'confirmed') return;
+    if (!pending || activeToken || panel.hidden || panel.dataset.state === 'confirmed') return;
     const { email } = pending;
     await resend(async () => {
       const captchaToken = await requestCaptcha(form, 'resend_signup');
-      if (pending?.email !== email || panel.dataset.state === 'confirmed') return { kind: 'cancelled' };
+      if (activeToken || pending?.email !== email || panel.dataset.state === 'confirmed') return { kind: 'cancelled' };
       const { error } = await auth.resend({ type: 'signup', email, options: { emailRedirectTo: location.origin, captchaToken } });
       if (error && !['user_not_found', 'user_already_exists', 'email_already_confirmed'].includes(error.code)) {
         return { kind: emailErrorKind(error) };
@@ -94,44 +107,45 @@ export function setupSignupConfirmation({ auth, policy, callback, recovery }) {
   };
 
   async function check(session) {
-    if (recovery || busy || !session?.access_token) return;
-    // A callback may be opened in a new browser, but it must match the
-    // session the SDK just established. A pending tab may also learn of a
-    // matching confirmed login through the SDK's same-origin auth events.
+    if (recovery) return;
+    const token = session?.access_token ?? null;
+    if (token !== activeToken && panel.dataset.state === 'confirmed') hideConfirmation();
+    activeToken = token;
+    if (!token) return;
+
     const expected = pending;
-    const fromLink = callback.token === session.access_token;
+    const fromLink = !callback.expired && callback.token === token;
     const matchesPending = expected && normalize(session.user?.email) === expected.email;
-    if (!fromLink && (callback.explicit || callback.expired || !matchesPending)) return;
-    busy = true;
+    if (panel.dataset.state !== 'confirmed') hideConfirmation();
+    if (!fromLink) resetCallback();
+    if ((!fromLink && !matchesPending) || checkingToken === token) return;
+    checkingToken = token;
     try {
-      const { data, error } = await auth.getUser(session.access_token);
-      if (error || !data?.user?.email_confirmed_at || data.user.id !== session.user?.id
-        || (matchesPending && !fromLink && normalize(data.user.email) !== expected.email)) return;
-      // If the user dismissed this panel while validation was in flight,
-      // let the explicit navigation win.
-      if (!fromLink && pending !== expected) return;
-      if (fromLink && callback.token !== session.access_token) return;
-      callback.token = null;
-      callback.explicit = false;
-      save(null);
+      const { data, error } = await auth.getUser(token);
+      if (activeToken !== token || error || !data?.user?.email_confirmed_at
+        || data.user.id !== session.user?.id) return;
+      if (expected && pending === expected && normalize(data.user.email) === expected.email) save(null);
+      if (!fromLink || callback.token !== token) return;
+      resetCallback();
       display('confirmed');
       setTimeout(async () => {
         if (panel.hidden || !modal.classList.contains('open') || panel.dataset.state !== 'confirmed') return;
         try {
           const { data: current } = await auth.getSession();
           if (current?.session?.user?.id === data.user.id) {
-            returnToLogin(false);
+            hideConfirmation();
             if (location.pathname === '/' && !location.search && !location.hash) modal.classList.remove('open');
             else location.replace('/');
             return;
           }
         } catch { /* Use the login fallback when the session is unavailable. */ }
-        returnToLogin();
+        hideConfirmation();
+        document.getElementById('loginEmail').focus();
       }, 1600);
     } catch {
       // Leave the pending state available when Auth cannot be reached.
     } finally {
-      busy = false;
+      if (checkingToken === token) checkingToken = null;
     }
   }
 
@@ -142,23 +156,19 @@ export function setupSignupConfirmation({ auth, policy, callback, recovery }) {
       display('pending');
     },
     showIfPending() {
-      if (!pending || recovery) return false;
+      if (!pending || activeToken || recovery) return false;
       display('pending');
       return true;
     },
-    async initial() {
-      if (recovery || (!pending && !callback.explicit && !callback.expired)) return;
+    initial() {
+      if (recovery || activeToken || (!pending && !callback.explicit && !callback.expired)) return;
       if (callback.expired) {
         display('pending', 'O link expirou ou já foi usado. ' + (pending ? 'Solicite outro abaixo.' : 'Volte ao login para continuar.'));
         return;
       }
-      if (pending) display('pending');
-      else display('pending', 'Verificando a confirmação…');
-      const { data } = await auth.getSession();
-      await check(data?.session);
-      if (callback.explicit && !busy && panel.dataset.state !== 'confirmed' && !callback.expired) {
+      if (callback.explicit) {
         display('pending', 'Não foi possível validar o link. ' + (pending ? 'Solicite outro abaixo.' : 'Volte ao login para continuar.'));
-      }
+      } else display('pending');
     },
     check,
   };
