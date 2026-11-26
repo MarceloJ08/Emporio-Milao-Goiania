@@ -803,18 +803,59 @@ async function renderSalesWorkspace(){
  if(!stores.length||!itemsCatalog.length){root.innerHTML='<div class="admin-empty">Cadastre unidades e produtos antes de lançar vendas.</div>';return;}
  let lines=[];
  const getAvailable=(productId,storeId)=>Number(branchStock.find(x=>x.product_id===productId&&x.store_id===storeId)?.quantity||0);
- root.innerHTML='<section class="admin-section"><div class="eyebrow">ATENDIMENTO DIGITAL</div><h2>Registrar venda assistida</h2><p>Registre aqui os pedidos negociados pelo WhatsApp. O pedido será integrado ao financeiro e a quantidade será reservada no estoque da unidade selecionada.</p><form id="assistedSaleForm" class="admin-form"><div class="admin-form-grid"><label>Nome do cliente<input id="saleCustomer" required minlength="2" maxlength="120" placeholder="Nome completo"></label><label>WhatsApp do cliente<input id="salePhone" required type="tel" placeholder="(62) 99999-9999"></label><label>Endereço de entrega ou retirada<input id="saleAddress" required minlength="8" maxlength="300" placeholder="Endereço completo ou identificação da retirada"></label><label>Unidade de saída<select id="saleStore" required>'+stores.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')+'</select></label><label>Forma de pagamento<select id="salePayment"><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="cartao_entrega">Cartão na entrega</option></select></label><label>Confirmação do pagamento<select id="salePaymentStatus"><option value="pending">Pendente — ainda não recebido</option><option value="paid">Pago — recebido e conferido</option></select></label></div><h3>Produtos da venda</h3><div class="admin-form-grid"><label>Pesquisar produto<input id="saleProductSearch" type="search" placeholder="Digite nome, marca ou categoria..."><select id="saleProduct">'+itemsCatalog.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+' · '+brl(Number(p.price))+'</option>').join('')+'</select><small id="saleStockHint" style="display:block;color:#786e61;margin-top:5px">Saldo disponível na unidade selecionada: —</small></label><label>Quantidade<input id="saleQty" type="number" min="1" max="500" value="1"></label><label>Preço unitário negociado (R$)<input id="saleUnitPrice" type="number" min="0.01" step="0.01" required></label><div style="display:flex;align-items:end"><button type="button" class="admin-secondary" id="saleAddItem">Adicionar produto</button></div></div><div id="saleLines" class="admin-table-wrap"><p>Nenhum produto adicionado.</p></div><div class="admin-form-grid"><label>Desconto adicional no pedido (R$)<input id="saleOrderDiscount" type="number" min="0" step="0.01" value="0"></label><label id="saleStandardDiscountWrap" style="display:none">Compra acima de R$ 1.000,00: aplicar 3% de desconto?<select id="saleStandardDiscount"><option value="0">Não aplicar desconto</option><option value="3">Sim, aplicar 3%</option></select></label><label>Desconto maior que 3% (opcional)<input id="saleCustomDiscountPercent" type="number" min="3.01" max="100" step="0.5" placeholder="Ex.: 5"></label><label>Senha para autorizar desconto maior<input id="saleDiscountPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Senha de autorização"></label><label>Observações<input id="saleNotes" maxlength="300" placeholder="Detalhes de entrega, negociação..."></label></div><p style="font-size:12px;color:#786e61">O desconto padrão de 3% só é oferecido em vendas a partir de R$ 1.000,00. Percentuais maiores exigem autorização por senha.</p><div id="saleTotals" class="admin-kpis"></div><button class="admin-primary" type="submit">Registrar pedido e reservar estoque</button></form></section><section class="admin-section"><h2>Minhas vendas recentes</h2><div id="mySalesList">Carregando vendas...</div></section>';
+ root.innerHTML = `
+   <form id="assistedSaleForm" class="sale-desk admin-form">
+     <section class="admin-section sale-ticket">
+       <h2>Venda em andamento</h2>
+       <label>Unidade de saída<select id="saleStore" required>${stores.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')}</select></label>
+       <div class="sale-entry">
+         <label>Pesquisar produto<input id="saleProductSearch" type="search" placeholder="Nome, código ou categoria"></label>
+       <label>Produto<select id="saleProduct">${itemsCatalog.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+' · '+brl(Number(p.price))+'</option>').join('')}</select><small id="saleStockHint" style="display:block;color:#786e61;margin-top:5px">Saldo disponível na unidade selecionada: —</small></label>
+       <label>Quantidade<input id="saleQty" type="number" min="1" max="500" value="1"></label>
+       <label>Preço unitário negociado (R$)<input id="saleUnitPrice" type="number" min="0.01" step="0.01" required></label>
+         <button type="button" class="admin-primary" id="saleAddItem">Adicionar produto</button>
+       </div>
+       <h3>Itens da venda</h3>
+       <div id="saleLines" class="admin-table-wrap"></div>
+     </section>
+     <aside class="sale-summary" aria-label="Resumo da venda">
+       <span>Empório Milão Prime</span>
+       <h2>Total da venda</h2>
+       <strong id="saleGrandTotal" aria-live="polite"></strong>
+       <div id="saleCount"></div>
+       <div id="saleTotals"></div>
+     </aside>
+     <section class="admin-section sale-checkout">
+       <h2>Dados do pedido</h2>
+       <div class="admin-form-grid"><label>Nome do cliente<input id="saleCustomer" required minlength="2" maxlength="120" placeholder="Nome completo"></label>
+       <label>WhatsApp do cliente<input id="salePhone" required type="tel" placeholder="(62) 99999-9999"></label>
+       <label>Endereço de entrega ou retirada<input id="saleAddress" required minlength="8" maxlength="300" placeholder="Endereço completo ou identificação da retirada"></label>
+       <label>Forma de pagamento<select id="salePayment"><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option><option value="cartao_entrega">Cartão na entrega</option></select></label>
+       <label>Confirmação do pagamento<select id="salePaymentStatus"><option value="pending">Pendente — ainda não recebido</option><option value="paid">Pago — recebido e conferido</option></select></label></div>
+       <h3>Descontos e observações</h3>
+       <div class="admin-form-grid"><label>Desconto adicional no pedido (R$)<input id="saleOrderDiscount" type="number" min="0" step="0.01" value="0"></label><label id="saleStandardDiscountWrap" style="display:none">Compra acima de R$ 1.000,00: aplicar 3% de desconto?<select id="saleStandardDiscount"><option value="0">Não aplicar desconto</option><option value="3">Sim, aplicar 3%</option></select></label>
+       <label>Desconto maior que 3% (opcional)<input id="saleCustomDiscountPercent" type="number" min="3.01" max="100" step="0.5" placeholder="Ex.: 5"></label>
+       <label>Senha para autorizar desconto maior<input id="saleDiscountPin" type="password" inputmode="numeric" autocomplete="off" placeholder="Senha de autorização"></label>
+       <label>Observações<input id="saleNotes" maxlength="300" placeholder="Detalhes de entrega, negociação..."></label></div>
+       <button class="admin-primary" type="submit">Registrar pedido e reservar estoque</button>
+     </section>
+   </form>
+   <section class="admin-section"><h2>Minhas vendas recentes</h2><div id="mySalesList">Carregando vendas...</div></section>`;
  const productSelect=document.getElementById('saleProduct'),priceInput=document.getElementById('saleUnitPrice'),storeSelect=document.getElementById('saleStore');
- const saleSearch=document.getElementById('saleProductSearch');saleSearch.addEventListener('input',()=>{const q=saleSearch.value.trim().toLocaleLowerCase('pt-BR'),selected=productSelect.value,filtered=itemsCatalog.filter(p=>(p.name+' '+p.category).toLocaleLowerCase('pt-BR').includes(q));productSelect.innerHTML=filtered.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+' · '+brl(Number(p.price))+'</option>').join('');if(filtered.some(p=>p.id===selected))productSelect.value=selected;setDefaultPrice();});
+ const saleSearch=document.getElementById('saleProductSearch');saleSearch.addEventListener('input',()=>{const q=saleSearch.value.trim().toLocaleLowerCase('pt-BR'),selected=productSelect.value,filtered=itemsCatalog.filter(p=>(p.name+' '+p.category+' '+p.id).toLocaleLowerCase('pt-BR').includes(q));productSelect.innerHTML=filtered.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+' · '+brl(Number(p.price))+'</option>').join('');if(filtered.some(p=>p.id===selected))productSelect.value=selected;setDefaultPrice();});
  const updateStockHint=()=>{const available=getAvailable(productSelect.value,storeSelect.value),already=lines.filter(x=>x.id===productSelect.value).reduce((n,x)=>n+x.quantity,0);document.getElementById('saleStockHint').textContent='Saldo disponível na unidade selecionada: '+Math.max(0,available-already)+' unidade(s)';};
  const setDefaultPrice=()=>{const opt=productSelect.selectedOptions[0];priceInput.value=Number(opt?.dataset.price||0).toFixed(2);updateStockHint();};
  setDefaultPrice();productSelect.onchange=setDefaultPrice;storeSelect.onchange=updateStockHint;
  const renderLines=()=>{
   const el=document.getElementById('saleLines');
-  if(!lines.length){el.innerHTML='<p>Nenhum produto adicionado.</p>';document.getElementById('saleTotals').innerHTML='';return;}
+
   const subtotal=lines.reduce((s,x)=>s+x.listPrice*x.quantity,0),lineDiscount=lines.reduce((s,x)=>s+(x.listPrice-x.unitPrice)*x.quantity,0),extra=Math.max(0,Number(document.getElementById('saleOrderDiscount').value)||0),customPercent=Number(document.getElementById('saleCustomDiscountPercent').value)||0,standardWrap=document.getElementById('saleStandardDiscountWrap'),standardSelect=document.getElementById('saleStandardDiscount');standardWrap.style.display=subtotal>=1000?'':'none';if(subtotal<1000)standardSelect.value='0';const discountPercent=customPercent>0?customPercent:Number(standardSelect.value)||0,percentBase=Math.max(0,subtotal-lineDiscount-extra),percentDiscount=Math.round(percentBase*discountPercent)/100,total=subtotal-lineDiscount-extra-percentDiscount;
-  el.innerHTML='<table class="admin-table"><thead><tr><th>Produto</th><th>Qtd.</th><th>Preço tabela</th><th>Preço negociado</th><th>Desconto</th><th>Subtotal</th><th></th></tr></thead><tbody>'+lines.map((x,i)=>'<tr><td>'+escapeHtml(x.name)+'</td><td>'+x.quantity+'</td><td>'+brl(x.listPrice)+'</td><td>'+brl(x.unitPrice)+'</td><td>'+brl((x.listPrice-x.unitPrice)*x.quantity)+'</td><td>'+brl(x.unitPrice*x.quantity)+'</td><td><button type="button" class="admin-secondary" data-remove-sale-line="'+i+'">Remover</button></td></tr>').join('')+'</tbody></table>';
-  document.getElementById('saleTotals').innerHTML='<div class="admin-kpi"><small>Subtotal</small><strong>'+brl(subtotal)+'</strong></div><div class="admin-kpi"><small>Descontos</small><strong>'+brl(lineDiscount+extra+percentDiscount)+'</strong><em>'+(discountPercent?discountPercent+'% adicional aplicado':'Sem desconto percentual')+'</em></div><div class="admin-kpi"><small>Total do pedido</small><strong>'+brl(total)+'</strong></div>';
+  el.innerHTML='<table class="admin-table"><thead><tr><th>Produto</th><th>Qtd.</th><th>Preço tabela</th><th>Preço negociado</th><th>Desconto</th><th>Subtotal</th><th>Ação</th></tr></thead><tbody>'+lines.map((x,i)=>'<tr><td>'+escapeHtml(x.name)+'</td><td>'+x.quantity+'</td><td>'+brl(x.listPrice)+'</td><td>'+brl(x.unitPrice)+'</td><td>'+brl((x.listPrice-x.unitPrice)*x.quantity)+'</td><td>'+brl(x.unitPrice*x.quantity)+'</td><td><button type="button" class="admin-secondary" data-remove-sale-line="'+i+'">Remover</button></td></tr>').join('')+'</tbody></table>';
+  if (!lines.length) el.querySelector('tbody').innerHTML = '<tr><td colspan="7">Adicione um produto para iniciar a venda.</td></tr>';
+  const units = lines.reduce((sum, line) => sum + line.quantity, 0);
+  document.getElementById('saleCount').textContent = lines.length + ' produto(s) · ' + units + ' unidade(s)';
+  document.getElementById('saleGrandTotal').textContent = brl(Math.max(0,total));
+  document.getElementById('saleTotals').innerHTML = '<p>Subtotal <b>'+brl(subtotal)+'</b></p><p>Descontos <b>'+brl(lines.length ? lineDiscount+extra+percentDiscount : 0)+'</b></p>';
   el.querySelectorAll('[data-remove-sale-line]').forEach(b=>b.onclick=()=>{lines.splice(Number(b.dataset.removeSaleLine),1);renderLines();updateStockHint();});
  };
  document.getElementById('saleAddItem').onclick=()=>{
@@ -836,6 +877,7 @@ async function renderSalesWorkspace(){
   if(error){toast('Venda não registrada: '+error.message);return;}
   toast('Venda registrada! Pedido #'+String(data).slice(0,8)+'.');lines=[];document.getElementById('assistedSaleForm').reset();document.getElementById('saleStandardDiscountWrap').style.display='none';setDefaultPrice();renderLines();await loadMySales();
  };
+ renderLines();
  await loadMySales();
 }
 async function loadMySales(){

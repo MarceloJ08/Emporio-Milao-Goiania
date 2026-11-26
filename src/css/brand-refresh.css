@@ -202,3 +202,42 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
 #accountModal.mfa-required .account-modal-card > :not(#accountSigned),
 #accountModal.mfa-required #accountSigned > :not(#accountSettings):not(#logoutBtn),
 #accountModal.mfa-required #accountSettings > :not(#mfaSettings):not(#mfaSettingsToggle):not(#mfaStaffNotice){display:none!important}
+/* Estação de venda assistida */
+.sales-mode .sale-desk {
+  display: grid;
+  grid-template-columns: minmax(0, 2.6fr) minmax(230px, 1fr);
+  align-items: start;
+  gap: 18px;
+}
+.sale-desk .admin-section { min-width: 0; margin: 0; }
+.sale-desk .sale-ticket, .sale-desk .sale-checkout { display: grid; gap: 18px; }
+.sale-desk h2, .sale-desk h3 { margin: 0; }
+.sale-entry { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.sale-entry label, .sale-ticket > label { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.sale-entry select, .sale-entry input { width: 100%; min-width: 0; }
+.sale-entry button { justify-self: start; }
+.sale-summary {
+  position: sticky;
+  top: 18px;
+  grid-row: span 2;
+  padding: clamp(20px, 3vw, 36px);
+  border-radius: 16px;
+  background: var(--forest);
+  color: var(--white);
+  border-top: 4px solid var(--gold);
+}
+.sale-summary > span { color: #dfc99f; text-transform: uppercase; letter-spacing: .14em; font-size: .75rem; }
+.sale-summary h2 { margin: 28px 0 8px; color: inherit; }
+.sale-summary strong { display: block; font: 400 clamp(2rem, 3.6vw, 3.6rem)/1.2 'DM Serif Display', Georgia, serif; overflow-wrap: anywhere; }
+.sale-summary #saleCount { margin: 8px 0 22px; }
+.sale-summary #saleTotals { border-top: 1px solid #819085; }
+.sale-summary #saleTotals p { display: flex; justify-content: space-between; gap: 8px; margin: 12px 0 0; color: inherit; }
+.sale-desk .admin-table-wrap { overflow-x: auto; }
+.sale-desk + .admin-section { margin-top: 18px; }
+@media (max-width: 820px) {
+  .sales-mode .sale-desk { grid-template-columns: minmax(0, 1fr); }
+  .sale-summary { position: static; grid-row: auto; }
+}
+@media (max-width: 520px) {
+  .sale-entry { grid-template-columns: minmax(0, 1fr); }
+}
