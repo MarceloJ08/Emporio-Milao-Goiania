@@ -126,9 +126,9 @@ let adminRealtimeChannel = null;
 let adminRefreshTimer = null;
 let activeAdminArea = 'finance';
 async function loadProducts(){
-  const {data,error}=await supa.from('products').select('id,name,category,country,price,compare_at_price,description,image_url,image_alt').eq('active',true).order('name');
+  const {data,error}=await supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,description,image_url,image_alt').eq('active',true).order('name');
   if(error){console.error('Falha ao carregar produtos:',error);toast('Não foi possível atualizar o catálogo.');return;}
-  if(data && data.length){products=data.map(p=>({...p,price:Number(p.price),oldPrice:p.compare_at_price?Number(p.compare_at_price):null}));renderFilters();renderProducts();if(currentCollection)renderCollectionProducts();}
+  if(data && data.length){products=data.map(p=>({...p,price:Number(p.price),oldPrice:p.compare_at_price?Number(p.compare_at_price):null}));renderFilters();renderProducts();renderCountries();if(currentCollection)renderCollectionProducts();}
 }
 async function loadCartForUser(user){
   cartOwnerId=user?.id||null;
@@ -248,7 +248,7 @@ let products=[{"id": "suco-honest-acerola", "name": "Suco Honest Acerola 900 ml"
  ['Vinhos','wine','Vinhos de todas as origens'],['Destilados','whisky','Destilados e licores'],['Whiskys','whisky','Scotch, bourbon e mais'],['Vinhos premium','sparkle','Rótulos especiais'],['Tintos','wine','Vinhos tintos'],['Vinho do Porto','wine','Ruby, LBV, Vintage, Tawny e mais'],['Brancos','flute','Vinhos brancos'],['Rosés','flower','Vinhos rosés'],['Espumantes','bottle','Brindes e celebrações'],['Carnes','meat','Cortes especiais'],['Utensílios','utensils','Acessórios e taças'],['Refrigerantes','drink','Bebidas sem álcool'],['Sucos','grapes','Sucos e bebidas de fruta'],['Frios','cheese','Frios e charcutaria'],['Azeites','olive','Azeites e conservas'],['Petiscos','snack','Para compartilhar'],['Queijos','cheese','Queijos especiais'],['Cervejas','beer','Cervejas e especiais'],['Gourmet & outros','sparkle','Outras descobertas']
 ];
 const countries=[['Argentina','Malbec, Bonarda e Cabernet'],['Brasil','Espumantes, Merlot e castas nacionais'],['Chile','Cabernet Sauvignon, Carménère e Sauvignon Blanc'],['França','Bordeaux, Borgonha, Rhône e Champagne'],['Itália','Sangiovese, Nebbiolo, Pinot Grigio e mais'],['Portugal','Douro, Alentejo, Dão e Vinho Verde'],['Espanha','Tempranillo, Garnacha e Cava'],['Uruguai','Tannat e outras castas'],['Estados Unidos','Napa Valley, Sonoma e Oregon'],['África do Sul','Pinotage, Chenin Blanc e blends'],['Austrália','Shiraz e Chardonnay'],['Nova Zelândia','Sauvignon Blanc e Pinot Noir']];
-let activeCategory='Todos',activeCountry='Argentina',cart=JSON.parse(localStorage.getItem('milao_cart_guest')||'{}'),cartOwnerId=null,currentProfile=null,cartSaveTimer=null;
+let activeCategory='Todos',cart=JSON.parse(localStorage.getItem('milao_cart_guest')||'{}'),cartOwnerId=null,currentProfile=null,cartSaveTimer=null;
 const brl=v=>v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function storeIcon(name) {
   return '<svg class="store-icon" aria-hidden="true" focusable="false"><use href="/src/icons.svg#' + name + '"></use></svg>';
@@ -268,7 +268,22 @@ function renderCountryFilter() {
   if (origins.includes(previous)) select.value = previous;
 }
 function renderFilters(){renderCountryFilter();let list=['Todos',...new Set(products.map(p=>p.category))];document.getElementById('activeFilters').innerHTML=list.map(c=>`<button class="chip ${(activeCategory===c||(activeCategory==='Todos'&&c==='Todos'))?'active':''}" data-filter="${c}">${c}</button>`).join('');document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{activeCategory=b.dataset.filter==='Todos'?'Todos':b.dataset.filter;renderCategories();renderFilters();renderProducts()})}
-function renderProducts(){let q=document.getElementById('search').value.toLowerCase();let sort=document.getElementById('sort').value;const country=document.getElementById('catalogCountry').value;let list=products.filter(p=>(!country||p.country===country)&&(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}el.innerHTML=list.map(p=>{let old=p.oldPrice&&Number(p.oldPrice)>Number(p.price)?p.oldPrice:null;let disc=old?Math.round((1-p.price/old)*100):null;return `<article class="product">${productArtHtml(p)}<div class="product-body"><div class="product-meta">${p.country} · ${p.category}</div><h3>${p.name}</h3><p>${p.description}</p><div class="prices">${old?`<span class="was">${brl(old)}</span><span class="discount">-${disc}% OFF</span>`:''}<span class="current">${brl(p.price)}</span></div><div class="price-note">${old?'Oferta cadastrada':'Preço atual publicado'}</div><button class="add" data-add="${p.id}">Adicionar à sacola +</button></div></article>`}).join('');el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
+const recommendedIds = [
+  'cardapio-catena-malbec',
+  'cardapio-veuve-clicquot-brut-yellow-label',
+  'cardapio-moet-chandon-imperial-brut',
+  'cardapio-vik-milla-cala-2022'
+];
+function storeDay() {
+  return new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Sao_Paulo'}).format(new Date());
+}
+function isWine(product) {
+  return /vinho|tinto|branco|rosé|champagne|espumante/i.test(product.category);
+}
+function renderProducts(){let q=document.getElementById('search').value.toLowerCase();let sort=document.getElementById('sort').value;const country=document.getElementById('catalogCountry').value;const showingPicks=!country && !q.trim() && activeCategory==='Todos';
+document.getElementById('catalogTitle').textContent=showingPicks?'Recomendados da casa':'Resultados do catálogo';
+const candidates=showingPicks?recommendedIds.map(id=>products.find(p=>p.id===id)).filter(Boolean):products;
+let list=candidates.filter(p=>(!country||p.country===country)&&(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(showingPicks && !list.length){el.textContent='Consulte o catálogo completo para explorar os rótulos disponíveis.';return;}if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}el.innerHTML=list.map(p=>{let old=p.oldPrice&&Number(p.oldPrice)>Number(p.price)?p.oldPrice:null;let disc=old?Math.round((1-p.price/old)*100):null;return `<article class="product">${productArtHtml(p)}<div class="product-body"><div class="product-meta">${p.country} · ${p.category}</div><h3>${p.name}</h3><p>${p.description}</p><div class="prices">${old?`<span class="was">${brl(old)}</span><span class="discount">-${disc}% OFF</span>`:''}<span class="current">${brl(p.price)}</span></div><div class="price-note">${old?'Oferta cadastrada':'Preço atual publicado'}</div><button class="add" data-add="${p.id}">Adicionar à sacola +</button></div></article>`}).join('');el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
 function waLink(msg){return 'https://wa.me/'+WA+'?text='+encodeURIComponent(msg)}
 function add(id){cart[id]=(cart[id]||0)+1;saveCart();toast('Produto adicionado à sua sacola.')}
 function saveCart(sync=true){const key=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';try{localStorage.setItem(key,JSON.stringify(cart));}catch(e){}document.getElementById('cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);renderCart();if(sync&&cartOwnerId){clearTimeout(cartSaveTimer);cartSaveTimer=setTimeout(()=>persistCart(),250);}}
@@ -303,6 +318,8 @@ function collectionFromUrl(){const p=new URLSearchParams(location.search);if(!p.
 function collectionMatches(product,collection){
  const cat=(product.category||'').toLowerCase(),name=(product.name||'').toLowerCase(),desc=(product.description||'').toLowerCase(),hay=cat+' '+name+' '+desc;
  const requested=(collection.category||'').toLowerCase();
+ if(requested==='promoções do dia')return isWine(product) && product.promotion_day===storeDay() && Number(product.oldPrice)>Number(product.price);
+ if(requested==='vinhos' && !isWine(product))return false;
  let categoryMatch=requested==='todos'||cat===requested||hay.includes(requested);
  if(requested==='destilados')categoryMatch=['destilados','whiskys','licores'].includes(cat)||categoryMatch;
  if(requested==='espumantes')categoryMatch=cat==='champagnes'||categoryMatch;
@@ -350,6 +367,7 @@ function renderCollectionProducts(){
  let list=products.filter(p=>collectionMatches(p,c)&&(!q||(''+p.name+' '+p.category+' '+p.country+' '+p.description).toLowerCase().includes(q)));
  if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));
  const el=document.getElementById('collectionProducts');
+ if(!list.length && c.category==='Promoções do dia'){el.innerHTML='<p class="collection-empty">'+(q?'Nenhuma oferta corresponde à busca.':'Nenhuma promoção publicada para hoje.')+'</p>';return;}
  if(!list.length){el.innerHTML='<div class="collection-empty"><div class="empty-seal">M</div><div class="eyebrow">Seleção em preparação</div><h3>Estamos preparando esta prateleira.</h3><p>Ainda não há produtos publicados nesta coleção no catálogo online. Não exibimos rótulos, preços ou descontos estimados. Fale com nossa equipe para consultar a disponibilidade atual.</p><a class="btn primary" target="_blank" href="'+waLink('Olá! Gostaria de consultar produtos e preços da coleção '+[c.category,c.country,c.style].filter(Boolean).join(' · ')+'.')+'">Consultar a equipe</a></div>';return;}
  el.innerHTML=list.map(p=>{const old=p.oldPrice&&Number(p.oldPrice)>Number(p.price)?p.oldPrice:null,disc=old?Math.round((1-p.price/old)*100):null;return '<article class="product">'+productArtHtml(p)+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.description||'Produto selecionado pelo Empório Milão.')+'</p><div class="prices">'+(old?'<span class="was">'+brl(old)+'</span><span class="discount">-'+disc+'% OFF</span>':'')+'<span class="current">'+brl(p.price)+'</span></div><div class="price-note">'+(old?'Oferta cadastrada':'Preço atual publicado')+'</div><button class="add" data-add-collection="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>';}).join('');
  el.querySelectorAll('[data-add-collection]').forEach(b=>b.onclick=()=>add(b.dataset.addCollection));
@@ -359,9 +377,16 @@ document.getElementById('collectionSort').addEventListener('change',renderCollec
 document.getElementById('backHome').onclick=()=>closeCollection();
 window.addEventListener('popstate',()=>{if(recoveryOpen)return;if(new URLSearchParams(location.search).get('admin')==='1'){openAdminPanel(true);}else if(new URLSearchParams(location.search).get('vendas')==='1'){openSalesPanel(true);}else if(document.body.classList.contains('admin-mode')){document.body.classList.remove('admin-mode','sales-mode');document.getElementById('adminPage').hidden=true;}const route=collectionFromUrl();if(route){currentCollection=route;renderCollection();}else closeCollection(false);});
 
-function renderCountries(){let el=document.getElementById('countryList');el.innerHTML=countries.map(c=>`<button class="country-btn ${activeCountry===c[0]?'active':''}" data-country="${c[0]}">${c[0]} <span>${storeIcon("arrow-out")}</span></button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>{activeCountry=b.dataset.country;renderCountries();updateCountry();openCollection({category:'Vinhos',country:activeCountry})})}
-function updateCountry(){let c=countries.find(x=>x[0]===activeCountry);document.getElementById('countryTitle').textContent=c[0];document.getElementById('countryDesc').textContent=c[1]+'. Explore os estilos e peça à equipe os rótulos disponíveis desta origem.';const found=products.filter(p=>p.country===c[0]&&/vinho|espumante/i.test(p.category+' '+p.name));document.getElementById('countryNote').textContent=found.length?found.length+' rótulo(s) já publicado(s) nesta origem. Os produtos estão separados por país e estilo. Imagens oficiais serão exibidas assim que seus endereços forem confirmados.':'Ainda não há rótulos confirmados desta origem no catálogo publicado. Não exibimos produtos ou preços estimados.'}
-document.getElementById('wineStyles').querySelectorAll('button').forEach(b=>b.onclick=()=>{document.querySelectorAll('#wineStyles button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const style=b.textContent==='Todos os estilos'?null:b.textContent;openCollection({category:'Vinhos',country:activeCountry,style})});
+function renderCountries() {
+  const published=products.filter(isWine).map(product=>product.country).filter(Boolean);
+  const origins=[...new Set(published.length?published:countries.map(([name])=>name))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  document.getElementById('countryList').replaceChildren(...origins.map(country=>{
+    const link=document.createElement('a');
+    link.href='/?'+new URLSearchParams({colecao:'Vinhos',pais:country});
+    link.textContent=country;
+    return link;
+  }));
+}
 
 const signupConfirmation = setupSignupConfirmation({ auth: supa.auth, policy: emailPolicy, callback: signupReturn, recovery: recoveryReturn });
 const signupFeedback = new Map(['registerForm', 'modalRegisterForm'].map(id => [
@@ -773,7 +798,7 @@ async function loadAdminDashboard(){
   supa.rpc('admin_finance_summary'),
   supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,payment_status,status,total_amount,subtotal_amount,discount_amount,sales_channel,seller_name,seller_email,store_id,created_at,store_locations(name),order_items(product_name,quantity,unit_price,list_unit_price,discount_amount,line_total)').order('created_at',{ascending:false}).limit(250),
   supa.from('profiles').select('id,full_name,phone,created_at').order('created_at',{ascending:false}).limit(500),
-  supa.from('products').select('id,name,category,country,price,compare_at_price,description,active').order('name'),
+  supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,description,active').order('name'),
   supa.from('inventory').select('product_id,quantity,updated_at'),
   supa.from('inventory_movements').select('id,product_id,movement_type,quantity,note,created_at,products(name)').order('created_at',{ascending:false}).limit(60),
   supa.from('store_locations').select('id,name,active').order('name'),
@@ -817,6 +842,7 @@ async function loadAdminDashboard(){
   {id:'discounts',label:'Descontos para clientes',desc:'Regra de desconto, autorizações e limites por atendente.'},
   {id:'orders',label:'Pedidos online',desc:'Acompanhe pedidos, andamento e pagamentos.'},
   {id:'finance',label:'Faturamento detalhado',desc:'Recebimentos separados por forma de pagamento.'},
+  {id:'promotions',label:'Promoções do dia',desc:'Escolha os vinhos em oferta para hoje.'},
   {id:'products',label:'Produtos e catálogo',desc:'Cadastro, preços, promoções e publicação.'},
   {id:'customers',label:'Clientes',desc:'Consulte os clientes cadastrados.'}
  ];
@@ -837,6 +863,29 @@ async function loadAdminDashboard(){
   else if(heading.includes('clientes cadastrados'))area='customers';
   areaPanels[area].appendChild(section);
  });
+ const promotionPanel=areaPanels.promotions;
+ const eligible=productRows.filter(p=>p.active && isWine(p) && Number(p.compare_at_price)>Number(p.price));
+ promotionPanel.innerHTML='<section class="admin-section"><h2>Promoções do dia</h2><p>Selecione um vinho com desconto cadastrado. Para incluir outro rótulo, ajuste o preço atual e o anterior em Produtos e catálogo. O destaque termina à meia-noite de Goiânia.</p><label>Vinho em oferta <select></select></label> <button type="button" class="admin-primary">Destacar hoje</button><ul></ul></section>';
+ const promoSelect=promotionPanel.querySelector('select');
+ const promoButton=promotionPanel.querySelector('button');
+ const promoList=promotionPanel.querySelector('ul');
+ const today=storeDay();
+ for(const wine of eligible){
+   if(wine.promotion_day!==today){promoSelect.add(new Option(wine.name,wine.id));continue;}
+   const row=document.createElement('li');
+   row.append(wine.name+' ');
+   const remove=document.createElement('button');remove.type='button';remove.textContent='Retirar';
+   remove.onclick=()=>setPromotion(wine.id,null,remove);
+   row.append(remove);promoList.append(row);
+ }
+ promoButton.disabled=!promoSelect.length;
+ promoButton.onclick=()=>setPromotion(promoSelect.value,storeDay(),promoButton);
+ async function setPromotion(id,day,button){
+   button.disabled=true;
+   const {data,error}=await supa.from('products').update({promotion_day:day}).eq('id',id).select('id').single();
+   if(error||!data){button.disabled=false;toast('Não foi possível atualizar a promoção.');return;}
+   await loadProducts();await loadAdminDashboard();
+ }
  const discountPolicy=document.createElement('div');discountPolicy.className='admin-discount-policy-note';
  discountPolicy.innerHTML='<b>Política de descontos vigente</b><p>Pedidos a partir de R$ 1.000 podem receber 3% de desconto quando o vendedor optar por aplicar. Descontos acima de 3% exigem autorização por PIN e respeitam o limite liberado para cada atendente.</p>';
  areaPanels.discounts.prepend(discountPolicy);
@@ -988,4 +1037,4 @@ if(epuStage&&epuBottle){
  epuStage.addEventListener('keydown',e=>{let y=parseFloat(epuBottle.dataset.ry||'0');if(e.key==='ArrowLeft')y=clamp(y-4,-17,17);else if(e.key==='ArrowRight')y=clamp(y+4,-17,17);else if(e.key==='Home')y=0;else return;e.preventDefault();epuBottle.dataset.ry=y;paint(y,parseFloat(epuBottle.dataset.rx||'0'));});
 }
 
-renderCategories();renderFilters();renderProducts();renderCountries();updateCountry();saveCart(false);const initialCollection=collectionFromUrl();if(initialCollection){currentCollection=initialCollection;renderCollection();}loadProducts().catch(error=>console.error('Falha ao carregar catálogo:',error));initSupabase().catch(error=>console.error('Falha na inicialização:',error));
+renderCategories();renderFilters();renderProducts();renderCountries();saveCart(false);const initialCollection=collectionFromUrl();if(initialCollection){currentCollection=initialCollection;renderCollection();}loadProducts().catch(error=>console.error('Falha ao carregar catálogo:',error));initSupabase().catch(error=>console.error('Falha na inicialização:',error));
