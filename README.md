@@ -1,5 +1,11 @@
 # Empório Milão — código e operação
 
+O [painel das assistentes](https://emporio-milao-goiania.vercel.app/?vendas=1) faz parte da loja. Entre com uma conta da equipe e abra **Painel de vendas** no menu da conta.
+
+### Skills do projeto
+
+As 227 skills usadas no desenvolvimento estão registradas em `skills.lock.json`, com a origem e a revisão de cada coleção. Em uma nova cópia do repositório, com Python e Codex instalados, execute `python scripts/install_project_skills.py`. O instalador coloca as skills em `.agents/skills/` nesta pasta. Os arquivos de cada coleção seguem os termos do respectivo repositório.
+
 ## Estrutura
 - `index.html`: ponto de entrada da loja.
 - `src/css/styles.css`: estilos e identidade visual.
