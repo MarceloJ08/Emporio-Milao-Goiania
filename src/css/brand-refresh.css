@@ -203,6 +203,19 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
 #accountModal.mfa-required #accountSigned > :not(#accountSettings):not(#logoutBtn),
 #accountModal.mfa-required #accountSettings > :not(#mfaSettings):not(#mfaSettingsToggle):not(#mfaStaffNotice){display:none!important}
 /* Terminal de vendas da equipe */
+#customerReceipt { display: none; }
+@media print {
+  body:has(> #customerReceipt) { background: white; margin: 0; padding: 0; }
+  body:has(> #customerReceipt) > :not(#customerReceipt) { display: none !important; }
+  body > #customerReceipt {
+    display: block; width: min(100%, 72mm); margin: 0 auto; color: black;
+    background: white; font: 10pt/1.35 monospace; overflow-wrap: anywhere;
+  }
+  #customerReceipt h1 { font-size: 15pt; margin: 0; }
+  #customerReceipt h2 { font-size: 11pt; border-top: 1px dashed; padding-top: 2mm; }
+  #customerReceipt h3, #customerReceipt p { font-size: 10pt; margin: 1mm 0; }
+}
+.sale-commands button:disabled { opacity: .55; }
 .sales-mode .admin-wrap { max-width: none; padding: 0; }
 .sales-mode .admin-topbar { padding: 6px 18px; background: var(--forest); }
 .sales-mode .admin-topbar .admin-seal { width: 32px; height: 32px; }

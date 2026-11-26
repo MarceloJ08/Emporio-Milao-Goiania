@@ -4,6 +4,7 @@ import { setupSignupConfirmation, signupReturnFrom } from './signup-confirmation
 
 import { readAssurance, setupMfaChallenge, setupMfaSettings } from './mfa.mjs';
 import { captchaErrorMessage, requestCaptcha } from './turnstile.mjs';
+import { printSaleReceipt } from './sale-receipt.mjs';
 
 const passwordFields = document.querySelectorAll(
   'input[type="password"][autocomplete="current-password"], input[type="password"][autocomplete="new-password"]',
@@ -802,6 +803,8 @@ async function renderSalesWorkspace(){
  const stores=storesRes.data||[],itemsCatalog=productsRes.data||[],branchStock=branchStockRes.data||[];
  if(!stores.length||!itemsCatalog.length){root.innerHTML='<div class="admin-empty">Cadastre unidades e produtos antes de lançar vendas.</div>';return;}
  let lines=[];
+ let receiptOrderId = null;
+ const receiptSellerId = currentUser.id;
  const getAvailable=(productId,storeId)=>Number(branchStock.find(x=>x.product_id===productId&&x.store_id===storeId)?.quantity||0);
  root.innerHTML = `
    <form id="assistedSaleForm" class="sale-desk admin-form">
@@ -828,6 +831,7 @@ async function renderSalesWorkspace(){
          <button type="button" data-sale-focus="saleProductSearch"><kbd>F2</kbd> Produto</button>
          <button type="button" data-sale-focus="saleQty"><kbd>F4</kbd> Quantidade</button>
          <button type="button" data-sale-focus="saleCustomer"><kbd>F8</kbd> Fechar venda</button>
+         <button type="button" id="salePrint" aria-keyshortcuts="F9" disabled><kbd>F9</kbd> Imprimir cupom</button>
          <label>Unidade <select id="saleStore" required>${stores.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')}</select></label>
        </nav>
      </div>
@@ -887,9 +891,26 @@ async function renderSalesWorkspace(){
   const {data,error}=await supa.rpc('create_assisted_sale',{p_customer_name:document.getElementById('saleCustomer').value.trim(),p_customer_phone:document.getElementById('salePhone').value.trim(),p_delivery_address:document.getElementById('saleAddress').value.trim(),p_payment_method:document.getElementById('salePayment').value,p_payment_status:document.getElementById('salePaymentStatus').value,p_store_id:document.getElementById('saleStore').value,p_items:lines.map(x=>({id:x.id,quantity:x.quantity,unit_price:x.unitPrice})),p_order_discount:extra,p_discount_percent:discountPercent,p_discount_pin:discountPercent>3?discountPin:null,p_notes:document.getElementById('saleNotes').value.trim()||null});
   button.disabled=false;button.textContent='Registrar pedido e reservar estoque';
   if(error){toast('Venda não registrada: '+error.message);return;}
+  receiptOrderId = data;
+  printButton.disabled = false;
+  printButton.focus();
   toast('Venda registrada! Pedido #'+String(data).slice(0,8)+'.');lines=[];document.getElementById('assistedSaleForm').reset();document.getElementById('saleStandardDiscountWrap').style.display='none';setDefaultPrice();renderLines();await loadMySales();
  };
  const commands = root.querySelector('.sale-commands');
+ const printButton = document.getElementById('salePrint');
+ printButton.onclick = async () => {
+   if (lines.length) { toast('Feche a venda atual antes de imprimir o cupom.'); return; }
+   if (!receiptOrderId || printButton.disabled) return;
+   printButton.disabled = true;
+   try {
+     await printSaleReceipt(supa, receiptSellerId, receiptOrderId, () =>
+       commands.isConnected && document.body.classList.contains('sales-mode') && currentUser?.id === receiptSellerId);
+   } catch {
+     toast('Não foi possível carregar o cupom. Tente imprimir novamente.');
+   } finally {
+     printButton.disabled = false;
+   }
+ };
  const focusSaleField = id => {
    const input = document.getElementById(id);
    input.focus();
@@ -902,7 +923,11 @@ async function renderSalesWorkspace(){
  root.onkeydown = event => {
    if (!document.body.classList.contains('sales-mode') || !commands.isConnected) return;
    if (event.altKey || event.ctrlKey || event.metaKey) return;
-   if (shortcuts[event.key]) {
+   if (event.key === 'F9') {
+     event.preventDefault();
+     if (!receiptOrderId) toast('Registre a venda para imprimir o cupom.');
+     else if (!event.repeat) printButton.click();
+   } else if (shortcuts[event.key]) {
      event.preventDefault();
      focusSaleField(shortcuts[event.key]);
    } else if (event.key === 'Enter' && event.target.closest('.sale-entry') && event.target.tagName === 'INPUT') {
