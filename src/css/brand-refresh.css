@@ -241,6 +241,9 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
 .sales-mode #saleLines table { width: 100%; min-width: 610px; margin: 0; border-collapse: collapse; font-size: 12px; }
 #saleLines th { position: sticky; top: 0; padding: 6px; background: #485844; color: white; }
 #saleLines td { padding: 7px 6px; }
+#saleLines tr:has(input:checked) td { background: #eee8d9; }
+.sales-mode #saleLines .sale-line-choice { display: inline-flex; flex-direction: row; align-items: center; gap: 4px; margin: 0; }
+.sales-mode #saleLines input[type=radio] { width: 16px; min-height: 16px; height: 16px; margin: 0; padding: 0; accent-color: var(--forest); }
 #saleLines th, #saleLines td { text-align: left; }
 #saleLines .sale-code { max-width: 8ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #saleLines button { color: var(--wine); background: transparent; border: 0; text-decoration: underline; }

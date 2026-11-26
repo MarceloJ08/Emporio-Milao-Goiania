@@ -803,6 +803,7 @@ async function renderSalesWorkspace(){
  const stores=storesRes.data||[],itemsCatalog=productsRes.data||[],branchStock=branchStockRes.data||[];
  if(!stores.length||!itemsCatalog.length){root.innerHTML='<div class="admin-empty">Cadastre unidades e produtos antes de lançar vendas.</div>';return;}
  let lines=[];
+ let selectedLine = null;
  let receiptOrderId = null;
  const receiptSellerId = currentUser.id;
  const getAvailable=(productId,storeId)=>Number(branchStock.find(x=>x.product_id===productId&&x.store_id===storeId)?.quantity||0);
@@ -830,8 +831,12 @@ async function renderSalesWorkspace(){
        <nav class="sale-commands" aria-label="Comandos da venda">
          <button type="button" data-sale-focus="saleProductSearch"><kbd>F2</kbd> Produto</button>
          <button type="button" data-sale-focus="saleQty"><kbd>F4</kbd> Quantidade</button>
+         <button type="button" data-sale-key="F6"><kbd>F6</kbd> Excluir produto</button>
+         <button type="button" data-sale-key="F7"><kbd>F7</kbd> Retirar quantidade</button>
          <button type="button" data-sale-focus="saleCustomer"><kbd>F8</kbd> Fechar venda</button>
          <button type="button" id="salePrint" aria-keyshortcuts="F9" disabled><kbd>F9</kbd> Imprimir cupom</button>
+         <button type="button" data-sale-key="F10"><kbd>F10</kbd> Pedidos e cupons</button>
+         <button type="button" data-sale-key="F3"><kbd>F3</kbd> Cancelar compra</button>
          <label>Unidade <select id="saleStore" required>${stores.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')}</select></label>
        </nav>
      </div>
@@ -850,7 +855,7 @@ async function renderSalesWorkspace(){
        <button class="admin-primary" type="submit">Registrar pedido e reservar estoque</button>
      </section>
    </form>
-   <section class="admin-section"><h2>Minhas vendas recentes</h2><div id="mySalesList">Carregando vendas...</div></section>`;
+   <section class="admin-section"><h2 id="saleHistory" tabindex="-1">Meus pedidos e cupons recentes</h2><div id="mySalesList">Carregando vendas...</div></section>`;
  const productSelect=document.getElementById('saleProduct'),priceInput=document.getElementById('saleUnitPrice'),storeSelect=document.getElementById('saleStore');
  const saleSearch=document.getElementById('saleProductSearch');saleSearch.addEventListener('input',()=>{const q=saleSearch.value.trim().toLocaleLowerCase('pt-BR'),selected=productSelect.value,filtered=itemsCatalog.filter(p=>(p.name+' '+p.category+' '+p.id).toLocaleLowerCase('pt-BR').includes(q));productSelect.innerHTML=filtered.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+' · '+brl(Number(p.price))+'</option>').join('');if(filtered.some(p=>p.id===selected))productSelect.value=selected;setDefaultPrice();});
  const updateStockHint=()=>{const available=getAvailable(productSelect.value,storeSelect.value),already=lines.filter(x=>x.id===productSelect.value).reduce((n,x)=>n+x.quantity,0);document.getElementById('saleStockHint').textContent='Saldo disponível na unidade selecionada: '+Math.max(0,available-already)+' unidade(s)';};
@@ -858,17 +863,21 @@ async function renderSalesWorkspace(){
  setDefaultPrice();productSelect.onchange=setDefaultPrice;storeSelect.onchange=updateStockHint;
  const renderLines=()=>{
   const el=document.getElementById('saleLines');
+  if (!lines.includes(selectedLine)) selectedLine = lines.at(-1) || null;
 
   const subtotal=lines.reduce((s,x)=>s+x.listPrice*x.quantity,0),lineDiscount=lines.reduce((s,x)=>s+(x.listPrice-x.unitPrice)*x.quantity,0),extra=Math.max(0,Number(document.getElementById('saleOrderDiscount').value)||0),customPercent=Number(document.getElementById('saleCustomDiscountPercent').value)||0,standardWrap=document.getElementById('saleStandardDiscountWrap'),standardSelect=document.getElementById('saleStandardDiscount');standardWrap.style.display=subtotal>=1000?'':'none';if(subtotal<1000)standardSelect.value='0';const discountPercent=customPercent>0?customPercent:Number(standardSelect.value)||0,percentBase=Math.max(0,subtotal-lineDiscount-extra),percentDiscount=Math.round(percentBase*discountPercent)/100,total=subtotal-lineDiscount-extra-percentDiscount;
   el.innerHTML = `<table class="admin-table"><thead><tr>
     <th>Seq.</th><th>Código</th><th>Descrição</th><th>Und.</th><th>Qtde.</th><th>V. unit.</th><th>Total</th><th>Ação</th>
     </tr></thead><tbody>${lines.map((line, index) => `<tr>
-      <td>${index+1}</td><td class="sale-code" title="${escapeHtml(line.id)}">${escapeHtml(line.id)}</td>
+      <td><label class="sale-line-choice"><input type="radio" name="saleLine" value="${index}" ${line === selectedLine ? 'checked' : ''} aria-label="Selecionar ${escapeHtml(line.name)}">${index+1}</label></td><td class="sale-code" title="${escapeHtml(line.id)}">${escapeHtml(line.id)}</td>
       <td>${escapeHtml(line.name)}</td><td>UN</td><td>${line.quantity}</td>
       <td>${brl(line.unitPrice)}</td><td>${brl(line.unitPrice*line.quantity)}</td>
       <td><button type="button" data-remove-sale-line="${index}" aria-label="Remover ${escapeHtml(line.name)}">Remover</button></td>
     </tr>`).join('')}</tbody></table>`;
   const units = lines.reduce((sum, line) => sum + line.quantity, 0);
+  el.onchange = event => {
+    if (event.target.name === 'saleLine') selectedLine = lines[Number(event.target.value)];
+  };
   document.getElementById('saleCount').textContent = 'Itens: ' + lines.length + '  /  Quantidade: ' + units;
   document.getElementById('saleGrandTotal').textContent = brl(Math.max(0,total));
   document.getElementById('saleTotals').innerHTML = '<p>Subtotal <b>'+brl(subtotal)+'</b></p><p>Descontos <b>'+brl(lines.length ? lineDiscount+extra+percentDiscount : 0)+'</b></p>';
@@ -880,6 +889,7 @@ async function renderSalesWorkspace(){
   const found=lines.find(x=>x.id===id);
   const available=getAvailable(id,storeSelect.value),already=lines.filter(x=>x.id===id).reduce((n,x)=>n+x.quantity,0);if(already+quantity>available){toast('Estoque insuficiente nesta unidade. Disponível: '+available+'.');return;}
   if(found){if(found.unitPrice!==unitPrice){toast('Este produto já está na venda com outro preço unitário. Remova a linha anterior para alterar o preço.');return;}found.quantity+=quantity;}else lines.push({id,name:p.name,quantity,unitPrice,listPrice:Number(p.price)});
+  selectedLine = found || lines.at(-1);
   renderLines();updateStockHint();
  };
  document.getElementById('saleOrderDiscount').oninput=renderLines;document.getElementById('saleStandardDiscount').onchange=()=>{if(Number(document.getElementById('saleStandardDiscount').value)>0)document.getElementById('saleCustomDiscountPercent').value='';renderLines();};document.getElementById('saleCustomDiscountPercent').oninput=()=>{if(Number(document.getElementById('saleCustomDiscountPercent').value)>0)document.getElementById('saleStandardDiscount').value='0';renderLines();};
@@ -898,18 +908,25 @@ async function renderSalesWorkspace(){
  };
  const commands = root.querySelector('.sale-commands');
  const printButton = document.getElementById('salePrint');
- printButton.onclick = async () => {
-   if (lines.length) { toast('Feche a venda atual antes de imprimir o cupom.'); return; }
-   if (!receiptOrderId || printButton.disabled) return;
-   printButton.disabled = true;
+ const printOrder = async (id, button) => {
+   button.disabled = true;
    try {
-     await printSaleReceipt(supa, receiptSellerId, receiptOrderId, () =>
+     await printSaleReceipt(supa, receiptSellerId, id, () =>
        commands.isConnected && document.body.classList.contains('sales-mode') && currentUser?.id === receiptSellerId);
    } catch {
      toast('Não foi possível carregar o cupom. Tente imprimir novamente.');
    } finally {
-     printButton.disabled = false;
+     button.disabled = false;
    }
+ };
+ document.getElementById('mySalesList').onclick = event => {
+   const button = event.target.closest('[data-sale-receipt]');
+   if (button) printOrder(button.dataset.saleReceipt, button);
+ };
+ printButton.onclick = async () => {
+   if (lines.length) { toast('Feche a venda atual antes de imprimir o cupom.'); return; }
+   if (!receiptOrderId || printButton.disabled) return;
+   await printOrder(receiptOrderId, printButton);
  };
  const focusSaleField = id => {
    const input = document.getElementById(id);
@@ -920,10 +937,56 @@ async function renderSalesWorkspace(){
    button.onclick = () => focusSaleField(button.dataset.saleFocus);
  });
  const shortcuts = {F2: 'saleProductSearch', F4: 'saleQty', F8: 'saleCustomer'};
+ const form = document.getElementById('assistedSaleForm');
+ const runSaleCommand = key => {
+   if (form.querySelector('[type=submit]').disabled) return;
+   if (key === 'F10') {
+     document.getElementById('saleHistory').focus();
+     return;
+   }
+   if (key === 'F3') {
+     if (!window.confirm('Cancelar toda a compra em andamento e limpar os dados deste atendimento?')) return;
+     const store = storeSelect.value;
+     form.reset();
+     storeSelect.value = store;
+     lines = [];
+     saleSearch.dispatchEvent(new Event('input'));
+     renderLines();
+     focusSaleField('saleProductSearch');
+     return;
+   }
+   if (!selectedLine) { toast('Selecione um produto da venda.'); return; }
+   let quantity = selectedLine.quantity;
+   if (key === 'F7') {
+     const answer = window.prompt('Quantas unidades de ' + selectedLine.name + ' deseja retirar? Disponível na venda: ' + quantity, '1');
+     if (answer === null) return;
+     const requested = Number(answer);
+     if (!Number.isInteger(requested) || requested < 1 || requested > quantity) {
+       toast('Informe uma quantidade inteira entre 1 e ' + quantity + '.');
+       return;
+     }
+     quantity = requested;
+   }
+   selectedLine.quantity -= quantity;
+   if (!selectedLine.quantity) lines.splice(lines.indexOf(selectedLine), 1);
+   renderLines();
+   updateStockHint();
+   focusSaleField('saleProductSearch');
+ };
+ const actionButtons = new Map();
+ for (const button of commands.querySelectorAll('[data-sale-key]')) {
+   const key = button.dataset.saleKey;
+   actionButtons.set(key, button);
+   button.setAttribute('aria-keyshortcuts', key);
+   button.onclick = () => runSaleCommand(key);
+ }
  root.onkeydown = event => {
    if (!document.body.classList.contains('sales-mode') || !commands.isConnected) return;
    if (event.altKey || event.ctrlKey || event.metaKey) return;
-   if (event.key === 'F9') {
+   if (actionButtons.has(event.key)) {
+     event.preventDefault();
+     if (!event.repeat) actionButtons.get(event.key).click();
+   } else if (event.key === 'F9') {
      event.preventDefault();
      if (!receiptOrderId) toast('Registre a venda para imprimir o cupom.');
      else if (!event.repeat) printButton.click();
@@ -943,7 +1006,7 @@ async function loadMySales(){
  const el=document.getElementById('mySalesList');if(!el)return;
  const {data,error}=await supa.from('orders').select('id,customer_name,total_amount,payment_status,created_at,store_locations(name),order_items(product_name,quantity,unit_price,discount_amount)').eq('seller_user_id',currentUser.id).order('created_at',{ascending:false}).limit(30);
  if(error){el.textContent='Não foi possível carregar as vendas recentes.';return;}
- el.innerHTML=(data||[]).map(o=>'<article class="admin-order-card"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+' · '+brl(Number(o.total_amount))+'</b><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+escapeHtml(o.customer_name)+' · '+escapeHtml(o.store_locations?.name||'Unidade')+'</small><p>'+escapeHtml((o.order_items||[]).map(i=>i.quantity+'× '+i.product_name+' · '+brl(Number(i.unit_price))+' un.').join(' | '))+'</p><span class="admin-pill">'+(o.payment_status==='paid'?'Pago':'Pendente')+'</span></article>').join('')||'<p>Nenhuma venda lançada por este usuário.</p>';
+ el.innerHTML=(data||[]).map(o=>'<article class="admin-order-card"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+' · '+brl(Number(o.total_amount))+'</b><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+escapeHtml(o.customer_name)+' · '+escapeHtml(o.store_locations?.name||'Unidade')+'</small><p>'+escapeHtml((o.order_items||[]).map(i=>i.quantity+'× '+i.product_name+' · '+brl(Number(i.unit_price))+' un.').join(' | '))+'</p><span class="admin-pill">'+(o.payment_status==='paid'?'Pago':'Pendente')+'</span><button type="button" class="admin-secondary" data-sale-receipt="'+escapeHtml(o.id)+'">Imprimir cupom</button></article>').join('')||'<p>Nenhuma venda lançada por este usuário.</p>';
 }
 
 function isAdminDashboardOpen() {
