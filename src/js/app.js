@@ -805,28 +805,34 @@ async function renderSalesWorkspace(){
  const getAvailable=(productId,storeId)=>Number(branchStock.find(x=>x.product_id===productId&&x.store_id===storeId)?.quantity||0);
  root.innerHTML = `
    <form id="assistedSaleForm" class="sale-desk admin-form">
-     <section class="admin-section sale-ticket">
-       <h2>Venda em andamento</h2>
-       <label>Unidade de saída<select id="saleStore" required>${stores.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')}</select></label>
-       <div class="sale-entry">
-         <label>Pesquisar produto<input id="saleProductSearch" type="search" placeholder="Nome, código ou categoria"></label>
-       <label>Produto<select id="saleProduct">${itemsCatalog.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+' · '+brl(Number(p.price))+'</option>').join('')}</select><small id="saleStockHint" style="display:block;color:#786e61;margin-top:5px">Saldo disponível na unidade selecionada: —</small></label>
-       <label>Quantidade<input id="saleQty" type="number" min="1" max="500" value="1"></label>
-       <label>Preço unitário negociado (R$)<input id="saleUnitPrice" type="number" min="0.01" step="0.01" required></label>
-         <button type="button" class="admin-primary" id="saleAddItem">Adicionar produto</button>
-       </div>
-       <h3>Itens da venda</h3>
-       <div id="saleLines" class="admin-table-wrap"></div>
-     </section>
-     <aside class="sale-summary" aria-label="Resumo da venda">
-       <span>Empório Milão Prime</span>
-       <h2>Total da venda</h2>
-       <strong id="saleGrandTotal" aria-live="polite"></strong>
-       <div id="saleCount"></div>
-       <div id="saleTotals"></div>
-     </aside>
+     <div class="sale-console">
+       <section class="sale-ticket" aria-label="Lançamento de produtos">
+         <div class="sale-entry">
+           <label>Produto<input id="saleProductSearch" type="search" placeholder="Buscar nome ou código"></label>
+           <label>Quantidade<input id="saleQty" type="number" min="1" max="500" value="1"></label>
+           <label>Valor unitário (R$)<input id="saleUnitPrice" type="number" min="0.01" step="0.01"></label>
+           <button type="button" id="saleAddItem">Adicionar</button>
+           <select id="saleProduct" aria-label="Produto do catálogo">${itemsCatalog.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+'</option>').join('')}</select>
+           <small id="saleStockHint"></small>
+         </div>
+         <h2>Venda em transação</h2>
+         <div id="saleLines" class="admin-table-wrap"></div>
+       </section>
+       <aside class="sale-summary" aria-label="Resumo da venda">
+         <div class="sale-display"><div id="saleCount"></div><h2>Valor total</h2>
+           <strong id="saleGrandTotal" aria-live="polite"></strong></div>
+         <div id="saleTotals"></div>
+         <div class="sale-brand"><img src="/src/images/logo-emporio-milao.jpg" alt="" width="76" height="76"><span>Empório Milão<small>PRIME · GOIÂNIA</small></span></div>
+       </aside>
+       <nav class="sale-commands" aria-label="Comandos da venda">
+         <button type="button" data-sale-focus="saleProductSearch"><kbd>F2</kbd> Produto</button>
+         <button type="button" data-sale-focus="saleQty"><kbd>F4</kbd> Quantidade</button>
+         <button type="button" data-sale-focus="saleCustomer"><kbd>F8</kbd> Fechar venda</button>
+         <label>Unidade <select id="saleStore" required>${stores.map(s=>'<option value="'+escapeHtml(s.id)+'">'+escapeHtml(s.name)+'</option>').join('')}</select></label>
+       </nav>
+     </div>
      <section class="admin-section sale-checkout">
-       <h2>Dados do pedido</h2>
+       <h2>Fechamento da venda</h2>
        <div class="admin-form-grid"><label>Nome do cliente<input id="saleCustomer" required minlength="2" maxlength="120" placeholder="Nome completo"></label>
        <label>WhatsApp do cliente<input id="salePhone" required type="tel" placeholder="(62) 99999-9999"></label>
        <label>Endereço de entrega ou retirada<input id="saleAddress" required minlength="8" maxlength="300" placeholder="Endereço completo ou identificação da retirada"></label>
@@ -850,10 +856,16 @@ async function renderSalesWorkspace(){
   const el=document.getElementById('saleLines');
 
   const subtotal=lines.reduce((s,x)=>s+x.listPrice*x.quantity,0),lineDiscount=lines.reduce((s,x)=>s+(x.listPrice-x.unitPrice)*x.quantity,0),extra=Math.max(0,Number(document.getElementById('saleOrderDiscount').value)||0),customPercent=Number(document.getElementById('saleCustomDiscountPercent').value)||0,standardWrap=document.getElementById('saleStandardDiscountWrap'),standardSelect=document.getElementById('saleStandardDiscount');standardWrap.style.display=subtotal>=1000?'':'none';if(subtotal<1000)standardSelect.value='0';const discountPercent=customPercent>0?customPercent:Number(standardSelect.value)||0,percentBase=Math.max(0,subtotal-lineDiscount-extra),percentDiscount=Math.round(percentBase*discountPercent)/100,total=subtotal-lineDiscount-extra-percentDiscount;
-  el.innerHTML='<table class="admin-table"><thead><tr><th>Produto</th><th>Qtd.</th><th>Preço tabela</th><th>Preço negociado</th><th>Desconto</th><th>Subtotal</th><th>Ação</th></tr></thead><tbody>'+lines.map((x,i)=>'<tr><td>'+escapeHtml(x.name)+'</td><td>'+x.quantity+'</td><td>'+brl(x.listPrice)+'</td><td>'+brl(x.unitPrice)+'</td><td>'+brl((x.listPrice-x.unitPrice)*x.quantity)+'</td><td>'+brl(x.unitPrice*x.quantity)+'</td><td><button type="button" class="admin-secondary" data-remove-sale-line="'+i+'">Remover</button></td></tr>').join('')+'</tbody></table>';
-  if (!lines.length) el.querySelector('tbody').innerHTML = '<tr><td colspan="7">Adicione um produto para iniciar a venda.</td></tr>';
+  el.innerHTML = `<table class="admin-table"><thead><tr>
+    <th>Seq.</th><th>Código</th><th>Descrição</th><th>Und.</th><th>Qtde.</th><th>V. unit.</th><th>Total</th><th>Ação</th>
+    </tr></thead><tbody>${lines.map((line, index) => `<tr>
+      <td>${index+1}</td><td class="sale-code" title="${escapeHtml(line.id)}">${escapeHtml(line.id)}</td>
+      <td>${escapeHtml(line.name)}</td><td>UN</td><td>${line.quantity}</td>
+      <td>${brl(line.unitPrice)}</td><td>${brl(line.unitPrice*line.quantity)}</td>
+      <td><button type="button" data-remove-sale-line="${index}" aria-label="Remover ${escapeHtml(line.name)}">Remover</button></td>
+    </tr>`).join('')}</tbody></table>`;
   const units = lines.reduce((sum, line) => sum + line.quantity, 0);
-  document.getElementById('saleCount').textContent = lines.length + ' produto(s) · ' + units + ' unidade(s)';
+  document.getElementById('saleCount').textContent = 'Itens: ' + lines.length + '  /  Quantidade: ' + units;
   document.getElementById('saleGrandTotal').textContent = brl(Math.max(0,total));
   document.getElementById('saleTotals').innerHTML = '<p>Subtotal <b>'+brl(subtotal)+'</b></p><p>Descontos <b>'+brl(lines.length ? lineDiscount+extra+percentDiscount : 0)+'</b></p>';
   el.querySelectorAll('[data-remove-sale-line]').forEach(b=>b.onclick=()=>{lines.splice(Number(b.dataset.removeSaleLine),1);renderLines();updateStockHint();});
@@ -877,6 +889,28 @@ async function renderSalesWorkspace(){
   if(error){toast('Venda não registrada: '+error.message);return;}
   toast('Venda registrada! Pedido #'+String(data).slice(0,8)+'.');lines=[];document.getElementById('assistedSaleForm').reset();document.getElementById('saleStandardDiscountWrap').style.display='none';setDefaultPrice();renderLines();await loadMySales();
  };
+ const commands = root.querySelector('.sale-commands');
+ const focusSaleField = id => {
+   const input = document.getElementById(id);
+   input.focus();
+   if (input.select) input.select();
+ };
+ commands.querySelectorAll('[data-sale-focus]').forEach(button => {
+   button.onclick = () => focusSaleField(button.dataset.saleFocus);
+ });
+ const shortcuts = {F2: 'saleProductSearch', F4: 'saleQty', F8: 'saleCustomer'};
+ root.onkeydown = event => {
+   if (!document.body.classList.contains('sales-mode') || !commands.isConnected) return;
+   if (event.altKey || event.ctrlKey || event.metaKey) return;
+   if (shortcuts[event.key]) {
+     event.preventDefault();
+     focusSaleField(shortcuts[event.key]);
+   } else if (event.key === 'Enter' && event.target.closest('.sale-entry') && event.target.tagName === 'INPUT') {
+     event.preventDefault();
+     document.getElementById('saleAddItem').click();
+   }
+ };
+ focusSaleField('saleProductSearch');
  renderLines();
  await loadMySales();
 }
