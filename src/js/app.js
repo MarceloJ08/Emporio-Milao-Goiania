@@ -256,7 +256,15 @@ function storeIcon(name) {
 function productIcon(category) {
   return categories.find(([name]) => name === category)?.[1] || "sparkle";
 }
-function productArtHtml(p){return p.image_url?'<div class="product-art has-image"><img src="'+escapeHtml(p.image_url)+'" alt="'+escapeHtml(p.image_alt||p.name)+'" loading="lazy" referrerpolicy="no-referrer"></div>':'<div class="product-art"><span>'+storeIcon(productIcon(p.category))+'</span></div>';}
+function productArtHtml(product) {
+  if (!product.image_url) {
+    return '<div class="product-art"><span>'+storeIcon(productIcon(product.category))+'</span></div>';
+  }
+  const label=product.image_alt || product.name;
+  const vintageNote=label.endsWith('A safra da foto pode variar.')
+    ? '<small class="product-photo-note">A safra da foto pode variar.</small>' : '';
+  return '<div class="product-art has-image"><img src="'+escapeHtml(product.image_url)+'" alt="'+escapeHtml(label)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer">'+vintageNote+'</div>';
+}
 function toast(s){let t=document.getElementById('toast');t.textContent=s;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200)}
 function renderCategories(){let el=document.getElementById('categoryGrid');el.innerHTML=categories.map(c=>`<button class="category ${activeCategory===c[0]?'selected':''}" data-cat="${c[0]}"><span class="symbol">${storeIcon(c[1])}</span><b>${c[0]}</b><small>${c[2]}</small></button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>openCollection({category:b.dataset.cat}))}
 function renderCountryFilter() {
@@ -798,7 +806,7 @@ async function loadAdminDashboard(){
   supa.rpc('admin_finance_summary'),
   supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,payment_status,status,total_amount,subtotal_amount,discount_amount,sales_channel,seller_name,seller_email,store_id,created_at,store_locations(name),order_items(product_name,quantity,unit_price,list_unit_price,discount_amount,line_total)').order('created_at',{ascending:false}).limit(250),
   supa.from('profiles').select('id,full_name,phone,created_at').order('created_at',{ascending:false}).limit(500),
-  supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,description,active').order('name'),
+  supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,description,active,image_url,image_alt').order('name'),
   supa.from('inventory').select('product_id,quantity,updated_at'),
   supa.from('inventory_movements').select('id,product_id,movement_type,quantity,note,created_at,products(name)').order('created_at',{ascending:false}).limit(60),
   supa.from('store_locations').select('id,name,active').order('name'),

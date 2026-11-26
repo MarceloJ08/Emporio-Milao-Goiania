@@ -196,3 +196,5 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
 .bottle-stage .barca-photo{object-fit:contain;mix-blend-mode:multiply;filter:none}
 @media(max-width:650px){.origin-nav{display:block}.origin-nav #countryList{margin-top:.35rem}}
 .admin-mode .origin-nav{display:none}
+.product-art.has-image{position:relative}
+.product-photo-note{position:absolute;bottom:.25rem;right:.4rem;background:#fffffff0;color:#48473e;padding:.1rem .3rem;border-radius:.2rem;font-size:.75rem}
