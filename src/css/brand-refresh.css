@@ -306,8 +306,46 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
 .admin-brand small { letter-spacing: .11em; }
 .admin-top-actions { justify-content: flex-end; }
 #adminIdentity { overflow-wrap: anywhere; }
+
+.product-art.has-image::before,
+.cart-product-art.has-image::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: url('/src/images/emporio-milao-nova-suica.webp') center 75% / 76% auto no-repeat;
+  opacity: .16;
+  pointer-events: none;
+}
+.cart-product-art.has-image::before { opacity: .1; }
+.stock-filters label { display:grid; gap:6px; }
+.stock-filters p { margin:8px 0 0; color:var(--muted); }
+.promo-form { display:grid; grid-template-columns:minmax(0,2fr) minmax(200px,1fr); gap:24px; }
+.promo-catalog select { min-height:215px; }
+.promo-catalog option, #saleProduct option { padding:6px 8px; }
+.promo-price { display:grid; align-content:start; gap:10px; }
+#promoPreview { display:flex; align-items:center; gap:12px; min-height:82px; }
+#promoPreview img { width:60px; height:82px; object-fit:contain; }
+#promoPreview small { display:block; margin-top:5px; }
+.promo-current { display:grid; gap:8px; padding-left:0; list-style:none; }
+.promo-current li { display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); padding:6px 0; }
+.order-chart { display:flex; flex-wrap:wrap; align-items:center; gap:22px; }
+.order-donut { width:136px; height:136px; border-radius:50%; background:#e6dfd1; display:grid; place-items:center; }
+.order-donut strong { display:grid; place-items:center; width:92px; height:92px; border-radius:50%; background:#fbf7ef; color:var(--ink); font-size:24px; }
+.order-chart ul { display:grid; gap:8px; padding:0; margin:0 0 10px; list-style:none; }
+.order-chart li { display:grid; grid-template-columns:10px 1fr auto; align-items:center; gap:9px; }
+.order-chart li i { width:10px; height:10px; border-radius:50%; }
+.sale-session { display:flex; flex-wrap:wrap; gap:8px 20px; align-items:end; margin-bottom:14px; padding:10px 16px; background:#f6f0e5; color:var(--ink); }
+.sale-session label { min-width:min(210px,100%); margin:0; }
+.sale-session p { margin:0 0 8px; }
+.sales-mode .sale-entry #saleProduct { grid-column:1/-1; height:auto; min-height:138px; }
+.sale-entry #saleStockHint { grid-column:1/-1; }
+.sale-checkout [hidden], .sale-checkout[hidden] { display:none; }
+.sale-checkout fieldset { border:0; padding:0; margin:0; min-width:0; }
+.sale-summary .sale-next { width:calc(100% - 32px); margin:8px 16px; }
 @media (max-width: 640px) {
   .nav { gap: 8px; padding-inline: 12px; }
   .admin-topbar { gap: 10px; }
   .admin-top-actions { flex-wrap: wrap; gap: 5px; text-align: right; }
+  .promo-form { grid-template-columns:1fr; gap:10px; }
 }

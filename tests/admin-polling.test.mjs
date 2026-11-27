@@ -38,6 +38,7 @@ function fixture(withDashboard = false) {
     window: {addEventListener: (event,callback) => {events[event] = callback;}},
     Date:class extends Date { static now(){ return now; } },
     brl: String, escapeHtml: String,
+    readStockByStore: async () => ({data:[]}),
     setTimeout(callback,delay) { timers.set(++serial,{callback,time:now+delay}); return serial; },
     clearTimeout(id) { timers.delete(id); },
     supa: {
