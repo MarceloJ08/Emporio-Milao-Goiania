@@ -313,8 +313,9 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
   position: absolute;
   inset: 0;
   border: 0;
-  background: url('/src/images/emporio-milao-nova-suica.webp') center 75% / 76% auto no-repeat;
-  opacity: .16;
+  background: url('/src/images/emporio-milao-nova-suica.webp') center / 76% auto no-repeat;
+  filter: brightness(1.14) saturate(.78);
+  opacity: .15;
   pointer-events: none;
 }
 .cart-product-art.has-image::before { opacity: .1; }
