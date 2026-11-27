@@ -254,10 +254,8 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
 #saleCount { font-size: 12px; }
 .sale-summary #saleTotals { padding: 8px 16px; }
 .sale-summary #saleTotals p { display: flex; justify-content: space-between; color: inherit; font-size: 12px; }
-.sale-brand { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; padding: 25px 10px; margin: auto 0; color: var(--forest); background: var(--paper); text-align: center; }
-.sale-brand img { border-radius: 50%; }
-.sale-brand span { font: 28px 'DM Serif Display',Georgia,serif; }
-.sale-brand small { display: block; font: 600 10px Inter,sans-serif; letter-spacing: .18em; }
+.sale-brand { display: grid; place-items: center; padding: 16px; margin: auto 0; background: #28291f; }
+.sale-brand .emporio-brand-image { width: min(100%, 212px); }
 .sale-commands { grid-column: 1/-1; display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding: 8px 16px; border-top: 2px solid var(--gold); background: #243529; }
 .sale-commands button { background: transparent; border: 0; color: white; font-size: 12px; }
 .sale-commands kbd { color: #ebcd91; font-weight: 700; }
@@ -273,7 +271,42 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
   .sale-display { padding: 12px; }
   .sale-display h2 { margin: 4px 0; }
   .sale-brand { padding: 8px; }
-  .sale-brand img { width: 36px; height: 36px; }
-  .sale-brand span { font-size: 18px; }
+  .sale-brand .emporio-brand-image { width: min(100%, 168px); }
   .sales-mode .sale-commands label { margin-left: 0; }
+}
+
+.emporio-brand-image {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.nav .emporio-brand-link,
+.emporio-brand-login {
+  width: fit-content;
+  padding: 4px 8px;
+  background: #28291f;
+  border-radius: 3px;
+}
+.nav .emporio-brand-link {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+.emporio-brand-link .emporio-brand-image {
+  width: clamp(124px, 17vw, 210px);
+}
+.footer-logo .emporio-brand-image { width: 212px; }
+.emporio-brand-login { margin-bottom: 16px; }
+.emporio-brand-login .emporio-brand-image { width: 162px; }
+.admin-brand {
+  display: grid;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.admin-brand .emporio-brand-image { width: clamp(125px, 16vw, 188px); }
+.admin-brand small { letter-spacing: .11em; }
+.admin-top-actions { justify-content: flex-end; }
+#adminIdentity { overflow-wrap: anywhere; }
+@media (max-width: 640px) {
+  .admin-topbar { gap: 10px; }
+  .admin-top-actions { flex-wrap: wrap; gap: 5px; text-align: right; }
 }

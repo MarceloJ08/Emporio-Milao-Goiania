@@ -826,7 +826,7 @@ async function renderSalesWorkspace(){
          <div class="sale-display"><div id="saleCount"></div><h2>Valor total</h2>
            <strong id="saleGrandTotal" aria-live="polite"></strong></div>
          <div id="saleTotals"></div>
-         <div class="sale-brand"><img src="/src/images/logo-emporio-milao.jpg" alt="" width="76" height="76"><span>Empório Milão<small>PRIME · GOIÂNIA</small></span></div>
+         <div class="sale-brand"><img class="emporio-brand-image" src="/src/images/emporio-milao-nova-suica.webp" width="1000" height="314" alt="Empório Milão — Nova Suíça"></div>
        </aside>
        <nav class="sale-commands" aria-label="Comandos da venda">
          <button type="button" data-sale-focus="saleProductSearch"><kbd>F2</kbd> Produto</button>
