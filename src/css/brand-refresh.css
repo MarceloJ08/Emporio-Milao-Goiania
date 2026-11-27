@@ -307,6 +307,7 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
 .admin-top-actions { justify-content: flex-end; }
 #adminIdentity { overflow-wrap: anywhere; }
 @media (max-width: 640px) {
+  .nav { gap: 8px; padding-inline: 12px; }
   .admin-topbar { gap: 10px; }
   .admin-top-actions { flex-wrap: wrap; gap: 5px; text-align: right; }
 }
