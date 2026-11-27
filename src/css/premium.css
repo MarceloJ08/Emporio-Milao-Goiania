@@ -94,7 +94,7 @@ header{background:rgba(249,247,242,.96);border-bottom:1px solid rgba(58,44,34,.1
   object-position:center;
   mix-blend-mode:multiply;
 }
-.product-art.has-image img{padding:clamp(8px,2vw,16px)}
+.product-art.has-image img{padding:clamp(12px,2.5vw,22px)}
 .product-art-fallback{display:none;position:absolute;inset:0;place-items:center;color:#8b7048;font-size:48px}
 .product-art.image-failed .product-art-fallback{display:grid}
 .cart-product-art{position:relative;overflow:hidden;background:#f5f1e9}
