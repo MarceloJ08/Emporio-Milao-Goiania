@@ -284,9 +284,9 @@ body{background:#f2ebdd;color:#28291f}.announcement{background:#343b2c;color:#f2
 .emporio-brand-login {
   width: fit-content;
   padding: 4px 8px;
-  background: #28291f;
   border-radius: 3px;
 }
+.emporio-brand-login { background: #28291f; }
 .nav .emporio-brand-link {
   flex: 0 1 auto;
   min-width: 0;
