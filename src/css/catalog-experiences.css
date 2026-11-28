@@ -98,9 +98,8 @@ body.admin-mode .sommelier-launch{display:none}
   display:grid;grid-template-columns:56px minmax(0,1fr) 44px;align-items:center;
   gap:10px;padding:10px 0;border-bottom:1px solid #e9e1d5
 }
-.cart-favorite-row .product-art{display:grid;place-items:center;width:56px;height:62px;min-height:0;border-radius:4px}
-.cart-favorite-row .product-art img{width:100%;height:100%;object-fit:contain}
-.cart-favorite-row .product-photo-note{display:none}
+.cart-favorite-row .cart-product-art{width:56px;height:62px;min-height:0;border-radius:4px}
+.cart-favorite-row .cart-product-art img{width:100%;height:100%;object-fit:contain;object-position:center}
 .cart-favorite-row b,.cart-favorite-row span{display:block;overflow-wrap:anywhere}
 .cart-favorite-row b{font-size:13px}
 .cart-favorite-row span{font-size:12px}
@@ -108,6 +107,7 @@ body.admin-mode .sommelier-launch{display:none}
 @media(max-width:420px){
   .favorite-on-card{inset-block-start:5px;inset-inline-end:5px}
   .cart-favorite-row{grid-template-columns:48px minmax(0,1fr) 44px;gap:8px}
-  .cart-favorite-row .product-art{width:48px}
+  .cart-favorite-row .cart-product-art{width:48px}
 }
 .feature-facts.wine-production{grid-template-columns:minmax(0,1fr)}
+.catalog-more{grid-column:1/-1;justify-self:center;min-height:44px;margin:12px 0}

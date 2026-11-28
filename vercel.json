@@ -28,6 +28,19 @@
           "value": "none"
         }
       ]
+    },
+    {
+      "source": "/src/images/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=300"
+        },
+        {
+          "key": "Vercel-CDN-Cache-Control",
+          "value": "public, s-maxage=86400, stale-while-revalidate=3600"
+        }
+      ]
     }
   ]
 }

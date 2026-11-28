@@ -15,7 +15,12 @@ function fixture(withDashboard = false) {
   const events = {};
   const timers = new Map();
   const classes = new Set(['admin-mode']);
-  const nodes = {adminPage:{hidden:false},adminPollStatus:{hidden:true,textContent:''},adminContent:{innerHTML:'old list'}};
+  const orderList={innerHTML:'old list',querySelectorAll:()=>[]};
+  const statusChart={querySelector:()=>({style:{}})};
+  const panels={'#adminOrdersList':orderList,'.admin-methods':{innerHTML:''},'#adminOrderStatusChart':statusChart,
+    '#adminOrderSearch':{value:''},'#adminOrderFilter':{value:'all'}};
+  const nodes = {adminPage:{hidden:false},adminPollStatus:{hidden:true,textContent:''},orderList,
+    adminContent:{innerHTML:'old list',querySelector:selector=>panels[selector],querySelectorAll:()=>[]}};
   const count = {authorized:0,refreshes:0,reads:0};
   let now = 0;
   let serial = 0;
@@ -63,8 +68,8 @@ function fixture(withDashboard = false) {
     refreshAuth: async () => {},
     toast: value => reports.push(value),
   };
-  const source = (withDashboard ? dashboardReads + 'const stats={};const orders=or.data||[];\n' + orderCards + '\ncontent.innerHTML=ordersHtml; }\n' : '')
-    + polling + '\n({scheduleAdminRefresh,stopAdminRefresh,loadAdminDashboard});';
+  const source = (withDashboard ? dashboardReads + 'const stats={};const orders=or.data||[];\n' + orderCards + '\nupdateAdminFinancialView(content,stats,orders,methods,ordersHtml); }\n' : '')
+    + polling + '\n({scheduleAdminRefresh,stopAdminRefresh,queueAdminOrderRefresh,loadAdminDashboard});';
   const vm = runInNewContext(timerState + source,context);
   const expectNext = time => assert.deepEqual([...timers.values()].map(timer=>timer.time),[time]);
   const advance = async time => {
@@ -135,12 +140,12 @@ test('query errors keep previous orders visible, report the error and recover at
   f.vm.scheduleAdminRefresh();
   await f.advance(20_000);
   assert.equal(f.count.reads,1);
-  assert.equal(f.nodes.adminContent.innerHTML,'old list');
+  assert.equal(f.nodes.orderList.innerHTML,'old list');
   assert.equal(f.nodes.adminPollStatus.hidden,false);
   f.db.failure=null;
   await f.advance(40_000);
   assert.equal(f.count.reads,2);
-  assert.match(f.nodes.adminContent.innerHTML,/Nenhum pedido registrado/);
+  assert.match(f.nodes.orderList.innerHTML,/Nenhum pedido registrado/);
   assert.equal(f.nodes.adminPollStatus.hidden,true);
 });
 
@@ -151,6 +156,20 @@ test('a new order returned by the scheduled read reaches the actual order render
   f.vm.scheduleAdminRefresh();
   await f.advance(20_000);
   assert.equal(f.count.authorized,1);
-  assert.match(f.nodes.adminContent.innerHTML,/Pedido #fixture-/);
-  assert.match(f.nodes.adminContent.innerHTML,/Pedido pelo site/);
+  assert.match(f.nodes.orderList.innerHTML,/Pedido #fixture-/);
+  assert.match(f.nodes.orderList.innerHTML,/Pedido pelo site/);
+  assert.equal(f.nodes.adminContent.innerHTML,'old list');
+});
+
+test('an order event advances the refresh and a burst keeps one authorized reload',async()=>{
+  const f=fixture();
+  f.vm.scheduleAdminRefresh();
+  f.now(1000);
+  f.vm.queueAdminOrderRefresh();
+  f.now(1100);
+  f.vm.queueAdminOrderRefresh();
+  f.expectNext(1500);
+  await f.advance(1500);
+  assert.deepEqual(f.count,{authorized:1,refreshes:1,reads:0});
+  f.expectNext(21500);
 });

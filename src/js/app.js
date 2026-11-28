@@ -7,6 +7,7 @@ import { captchaErrorMessage, requestCaptcha } from './turnstile.mjs';
 import { printSaleReceipt } from './sale-receipt.mjs';
 import { PROFILE_FIELDS, GIFT_OCCASION } from './catalog-profile.mjs';
 import { ALCOHOL_FREE_COLLECTION, ALCOHOL_FREE_WINES, EXTRA_COLLECTIONS, PREMIUM_WINE_PRICE, catalogWineType, isAlcoholFreeCollection, matchExtraCollection, matchWineCollection } from './catalog-collections.mjs';
+import {authProject,listingColumns} from './catalog-source.mjs';
 
 const favoritesKey='milao_catalog_favorites';
 let favoriteIds=readFavorites();
@@ -88,7 +89,6 @@ let emailStorage;
 try { emailStorage = window.localStorage; } catch { /* Restricted browser storage. */ }
 const emailPolicy = createEmailPolicy({ storage: emailStorage, locks: navigator.locks });
 const emailFetch = withEmailTimeout(emailPolicy);
-const authProject = ["https://khbcqvuaqmzxlmaayfla.supabase.co", "sb_publishable_N_Hr_LRVWHs-zN7NU5zV7A_aZuU6Fu1"];
 const recoveryUrl = new URL('/?senha=recuperar', location.origin);
 function readRecoveryReturn(url) {
   const query = url.searchParams;
@@ -124,11 +124,28 @@ let recoveryCallback = readRecoveryReturn(new URL(location.href));
 const recoveryReturn = Boolean(recoveryCallback);
 let recoveryOpen = recoveryReturn;
 let recoveryStarting = recoveryReturn;
+const dedicatedSalesSession = !recoveryReturn && new URLSearchParams(location.search).get('vendas') === '1';
 if (recoveryReturn) history.replaceState(history.state, '', '/');
 
+function salesAuthStorage(){
+  if(!dedicatedSalesSession)return {};
+  const tabKey='emporio_sales_tab';
+  try{
+    const id=sessionStorage.getItem(tabKey)||crypto.randomUUID();
+    sessionStorage.setItem(tabKey,id);
+    return {storage:sessionStorage,storageKey:'emporio-sales-'+id};
+  }catch{
+    const memory=new Map();
+    return {storageKey:'emporio-sales-'+crypto.randomUUID(),storage:{
+      getItem:key=>memory.get(key)??null,
+      setItem:(key,value)=>memory.set(key,value),
+      removeItem:key=>memory.delete(key)
+    }};
+  }
+}
 const supa = createClient(...authProject, {
   global: { fetch: emailFetch },
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: !recoveryReturn },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: !recoveryReturn, ...salesAuthStorage() },
 });
 
 const mfaChallenge = setupMfaChallenge(document.getElementById('mfaChallenge'));
@@ -189,26 +206,52 @@ let adminRefreshTimer = null;
 let adminRefreshDueAt = null;
 let adminRefreshInFlight = false;
 let adminDashboardRequest = 0;
+let adminOrderFeed = null;
 let activeAdminArea = 'finance';
 let catalogLoadedDay = null;
+let catalogLoadedAt = 0;
+let catalogRequest = null;
+let salesWorkspaceRequest = 0;
 const assistantNames = ['Tawane', 'Gabriela', 'Victoria'];
 const searchKey = value => String(value ?? '').normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR').trim();
 function catalogPrice(product, day = storeDay()) {
  const regular=Number(product.price),offer=Number(product.promotion_price);
  return product.promotion_day===day && offer>0 && offer<regular ? offer : regular;
 }
-async function readStockByStore(columns) {
+async function readStockByStore(columns,storeId=null) {
  const pageSize=1000,rows=[];
  for(let start=0;;start+=pageSize){
-   const page=await supa.from('store_inventory').select(columns).order('store_id').order('product_id').range(start,start+pageSize-1);
+   const query=supa.from('store_inventory').select(columns);
+   if(storeId)query.eq('store_id',storeId);
+   const page=await query.order('store_id').order('product_id').range(start,start+pageSize-1);
    if(page.error)return page;
    rows.push(...page.data);
    if(page.data.length<pageSize)return {data:rows,error:null};
  }
 }
-async function loadProducts(){
-  const {data,error}=await supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,promotion_price,description,image_url,image_alt,tipo_vinho,descricao_curta,categoria_kit').eq('active',true).order('name');
-  if(error){console.error('Falha ao carregar produtos:',error);toast('Não foi possível atualizar o catálogo.');return false;}
+function loadProducts(){
+  if(catalogRequest)return catalogRequest;
+  catalogRequest=refreshProducts().finally(()=>{catalogRequest=null;});
+  return catalogRequest;
+}
+async function refreshProducts(){
+  let data;
+  try{
+    if(isAdminDashboardOpen()||['localhost','127.0.0.1'].includes(location.hostname)){
+      const result=await supa.from('products').select(listingColumns).eq('active',true).order('name');
+      if(result.error)throw result.error;
+      data=result.data;
+    }else{
+      const response=await fetch('/api/catalog',{credentials:'omit',signal:AbortSignal.timeout(10000)});
+      if(!response.ok)throw Error('Catálogo indisponível.');
+      data=await response.json();
+    }
+    if(!Array.isArray(data))throw Error('Catálogo inválido.');
+  }catch(error){
+    console.error('Falha ao carregar produtos:',error);
+    if(!catalogLoadedAt)toast('Não foi possível atualizar o catálogo.');
+    return false;
+  }
   const day=storeDay();
   products=(data||[]).filter(p=>p.categoria_kit!=='embalagem').map(p=>{
     const price=catalogPrice(p,day);
@@ -219,10 +262,11 @@ async function loadProducts(){
   renderFavorites();
   renderCart();
   catalogLoadedDay=day;
+  catalogLoadedAt=Date.now();
   return true;
 }
 document.addEventListener('visibilitychange',()=>{
- if(!document.hidden&&catalogLoadedDay&&catalogLoadedDay!==storeDay())loadProducts();
+ if(!document.hidden&&catalogLoadedDay&&(catalogLoadedDay!==storeDay()||Date.now()-catalogLoadedAt>=60000))loadProducts();
 });
 async function loadCartForUser(user){
   const request=++cartLoadSequence;
@@ -362,14 +406,14 @@ async function refreshAuth(){
       const labels={received:'Recebido',confirmed:'Confirmado',preparing:'Em preparação',out_for_delivery:'Saiu para entrega',completed:'Concluído',cancelled:'Cancelado'};
       box.innerHTML='<h3>Meus pedidos</h3>'+orders.map(o=>'<article class="customer-order"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+'</b><span>'+escapeHtml(labels[o.status]||o.status)+'</span><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+brl(Number(o.total_amount))+'</small><p>'+((o.order_items||[]).map(i=>escapeHtml(i.quantity+'x '+i.product_name)).join(' · '))+'</p></article>').join('');
     }
-    if(changed)await loadCartForUser(currentUser);
+    if(changed&&!dedicatedSalesSession)await loadCartForUser(currentUser);
   }else{
     document.getElementById('accountStatus').textContent='Entre com seu e-mail e senha ou crie sua conta.';document.getElementById('accountBtn').textContent='Login';
     document.getElementById('accountLogin').style.display=staffSetupRequired?'none':'block';
     document.getElementById('accountRegister').style.display=staffSetupRequired?'none':'block';
     document.getElementById('accountSigned').style.display='none';
     document.getElementById('customerOrders').innerHTML='';
-    if(changed)await loadCartForUser(null);
+    if(changed&&!dedicatedSalesSession)await loadCartForUser(null);
   }
   if (staffSetupRequired) {
     document.body.classList.remove('admin-mode', 'sales-mode');
@@ -428,7 +472,7 @@ function renderFavorites(){
  const list=document.getElementById('cartFavoritesList');
  const catalog=new Map(products.map(product=>[product.id,product]));
  const saved=[...favoriteIds].reverse().map(id=>catalog.get(id)).filter(Boolean);
- list.innerHTML=saved.map(product=>'<article class="cart-favorite-row">'+productArtHtml(product)+
+ list.innerHTML=saved.map(product=>'<article class="cart-favorite-row">'+cartProductArt(product)+
   '<div><b>'+escapeHtml(product.name)+'</b><span>'+brl(product.price)+'</span><button class="product-details" type="button" data-add-favorite="'+escapeHtml(product.id)+'">Adicionar à sacola</button></div>'+
   favoriteButton(product)+'</article>').join('')||
   '<p>'+ (favoriteIds.size?'Os favoritos salvos aparecerão aqui quando estiverem disponíveis no catálogo.':'Toque no coração de um produto para salvar e comprar depois.') +'</p>';
@@ -493,18 +537,38 @@ function storeDay() {
 function isWine(product) {
   return Boolean(catalogWineType(product));
 }
-function renderProducts(){let q=document.getElementById('search').value.toLowerCase();let sort=document.getElementById('sort').value;const country=document.getElementById('catalogCountry').value;const showingPicks=!country && !q.trim() && activeCategory==='Todos';
+const catalogPageSize=48;
+let storefrontLimit=catalogPageSize,collectionLimit=catalogPageSize;
+function renderCatalogPage(grid,list,limit,card,showMore){
+ grid.innerHTML=list.slice(0,limit).map(card).join('');
+ if(list.length<=limit)return;
+ const more=document.createElement('button');
+ more.className='product-details catalog-more';
+ more.type='button';
+ more.textContent='Mostrar mais produtos';
+ more.onclick=()=>{
+  showMore();
+  grid.children[limit]?.querySelector('button, a')?.focus();
+ };
+ grid.append(more);
+}
+function renderProducts(append=false){if(append!==true)storefrontLimit=catalogPageSize;let q=document.getElementById('search').value.toLowerCase();let sort=document.getElementById('sort').value;const country=document.getElementById('catalogCountry').value;const showingPicks=!country && !q.trim() && activeCategory==='Todos';
 document.getElementById('catalogTitle').textContent=showingPicks?'Recomendados da casa':'Resultados do catálogo';
 const candidates=showingPicks?recommendedIds.map(id=>products.find(p=>p.id===id)).filter(Boolean):products;
-let list=candidates.filter(p=>(!country||p.country===country)&&(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(showingPicks && !list.length){el.textContent='Consulte o catálogo completo para explorar os rótulos disponíveis.';return;}if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+favoriteButton(p,'favorite-on-card')+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
+let list=candidates.filter(p=>(!country||p.country===country)&&(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(showingPicks && !list.length){el.textContent='Consulte o catálogo completo para explorar os rótulos disponíveis.';return;}if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}renderCatalogPage(el,list,storefrontLimit,p=>'<article class="product">'+productArtHtml(p)+favoriteButton(p,'favorite-on-card')+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>',()=>{storefrontLimit+=catalogPageSize;renderProducts(true);});el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
 function waLink(msg){return 'https://wa.me/'+WA+'?text='+encodeURIComponent(msg)}
 function add(id){cart[id]=(cart[id]||0)+1;saveCart();toast('Produto adicionado à sua sacola.')}
+function cartProductArt(product){
+ const symbol=storeIcon(productIcon(product.category));
+ const image=product.image_url?'<img src="'+escapeHtml(product.image_url)+'" alt="'+escapeHtml(product.image_alt||product.name)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add(\'image-failed\');this.remove()">':'';
+ return '<div class="cart-product-art'+(image?' has-image':'')+'">'+image+symbol+'</div>';
+}
 function saveCart(sync=true){const key=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';try{localStorage.setItem(key,JSON.stringify(cart));localStorage.setItem('milao_gift_kits_'+(cartOwnerId||'guest'),JSON.stringify(giftKits));}catch(e){}document.getElementById('cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0)+giftKits.length;renderCart();if(sync&&cartOwnerId){clearTimeout(cartSaveTimer);cartSaveTimer=setTimeout(()=>persistCart(),250);}}
 function renderCart(){
  const entries=Object.entries(cart).filter(([id,n])=>n>0&&products.some(p=>p.id===id));const el=document.getElementById('cartItems');
  if(!entries.length&&!giftKits.length){el.innerHTML='<div style="text-align:center;padding:50px 10px;color:#777"><div style="font-size:42px">'+storeIcon("bag")+'</div><b>Sua sacola está vazia.</b><p>Explore o catálogo e adicione seus favoritos.</p></div>';document.getElementById('cartTotal').textContent=brl(0);document.getElementById('checkoutTotal').textContent=brl(0);document.getElementById('continueCheckout').disabled=true;return;}
  document.getElementById('continueCheckout').disabled=false;let total=0;
- el.innerHTML=entries.map(([id,n])=>{const p=products.find(x=>x.id===id),line=p.price*n;total+=line;const symbol=storeIcon(productIcon(p.category));const art=p.image_url?'<img src="'+escapeHtml(p.image_url)+'" alt="'+escapeHtml(p.image_alt||p.name)+'" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add(\'image-failed\');this.remove()">'+symbol:symbol;return '<article class="cart-line"><div class="cart-product-art'+(p.image_url?' has-image':'')+'">'+art+'</div><div class="cart-product-info"><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.category||'Produto')+(p.country?' · '+escapeHtml(p.country):'')+'</small><small class="cart-unit">'+brl(p.price)+' por unidade</small></div><div class="cart-line-price"><strong>'+brl(line)+'</strong><div class="qty"><button type="button" data-dec="'+escapeHtml(id)+'">−</button><span>'+n+'</span><button type="button" data-inc="'+escapeHtml(id)+'">+</button></div></div></article>';}).join('');
+ el.innerHTML=entries.map(([id,n])=>{const p=products.find(x=>x.id===id),line=p.price*n;total+=line;return '<article class="cart-line">'+cartProductArt(p)+'<div class="cart-product-info"><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.category||'Produto')+(p.country?' · '+escapeHtml(p.country):'')+'</small><small class="cart-unit">'+brl(p.price)+' por unidade</small></div><div class="cart-line-price"><strong>'+brl(line)+'</strong><div class="qty"><button type="button" data-dec="'+escapeHtml(id)+'">−</button><span>'+n+'</span><button type="button" data-inc="'+escapeHtml(id)+'">+</button></div></div></article>';}).join('');
  el.insertAdjacentHTML('beforeend',giftKits.map(({id,quote:k})=>{
    total+=Number(k.price);
    return '<article class="cart-line cart-gift"><div class="cart-product-art">'+storeIcon('bag')+'</div><div class="cart-product-info"><b>'+escapeHtml(k.title)+'</b><small>'+escapeHtml(GIFT_OCCASION[k.occasion]||'Presente')+' · '+escapeHtml(k.items.map(item=>item.name).join(', '))+'</small><small>'+escapeHtml(k.method==='pickup'?'Retirada · '+k.store_name:'Entrega · '+k.date)+'</small><button class="product-details" type="button" data-edit-gift="'+escapeHtml(id)+'">Editar kit</button></div><div class="cart-line-price"><strong>'+brl(Number(k.price))+'</strong><button class="product-details" type="button" data-remove-gift="'+escapeHtml(id)+'">Remover</button></div></article>';
@@ -604,7 +668,8 @@ function renderCollection(){
  document.querySelectorAll('#collectionStyles [data-style]').forEach(b=>b.onclick=()=>openCollection({category:c.category,country:c.country,style:b.dataset.style==='Todos os estilos'?'':b.dataset.style}));
  renderCollectionProducts();
 }
-function renderCollectionProducts(){
+function renderCollectionProducts(append=false){
+ if(append!==true)collectionLimit=catalogPageSize;
  const c=currentCollection;if(!c)return;
  const q=document.getElementById('collectionSearch').value.toLowerCase(),sort=document.getElementById('collectionSort').value;
  let list=products.filter(p=>collectionMatches(p,c)&&(!q||(''+p.name+' '+p.category+' '+p.country+' '+p.description).toLowerCase().includes(q)));
@@ -613,7 +678,7 @@ function renderCollectionProducts(){
  if(!list.length && c.category==='Promoções do dia'){el.innerHTML='<p class="collection-empty">'+(q?'Nenhuma oferta corresponde à busca.':'Nenhuma promoção publicada para hoje.')+'</p>';return;}
  if(!list.length&&q){el.innerHTML='<p class="collection-empty">Nenhum produto corresponde à busca nesta categoria.</p>';return;}
  if(!list.length){el.innerHTML='<div class="collection-empty"><div class="empty-seal">M</div><div class="eyebrow">Seleção em preparação</div><h3>Estamos preparando esta prateleira.</h3><p>Ainda não há produtos publicados nesta coleção no catálogo online. Não exibimos rótulos, preços ou descontos estimados. Fale com nossa equipe para consultar a disponibilidade atual.</p><a class="btn primary" target="_blank" href="'+waLink('Olá! Gostaria de consultar produtos e preços da coleção '+[c.category,c.country,c.style].filter(Boolean).join(' · ')+'.')+'">Consultar a equipe</a></div>';return;}
- el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+favoriteButton(p,'favorite-on-card')+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'Produto selecionado pelo Empório Milão.')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add-collection="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');
+ renderCatalogPage(el,list,collectionLimit,p=>'<article class="product">'+productArtHtml(p)+favoriteButton(p,'favorite-on-card')+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'Produto selecionado pelo Empório Milão.')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add-collection="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>',()=>{collectionLimit+=catalogPageSize;renderCollectionProducts(true);});
  el.querySelectorAll('[data-add-collection]').forEach(b=>b.onclick=()=>add(b.dataset.addCollection));
 }
 document.getElementById('collectionSearch').addEventListener('input',renderCollectionProducts);
@@ -907,7 +972,7 @@ resetPassword.onsubmit = async event => {
   }
 };
 
-document.getElementById('logoutBtn').onclick=async()=>{const {error}=await supa.auth.signOut();if(error){toast(error.message);return;}toast('Você saiu da sua conta.');await refreshAuth();};
+document.getElementById('logoutBtn').onclick=async()=>{const {error}=await supa.auth.signOut({scope:'local'});if(error){toast(error.message);return;}if(document.body.classList.contains('sales-mode'))closeAdminPage();toast('Você saiu da sua conta nesta tela.');await refreshAuth();};
 document.getElementById('accountBtn').onclick=async()=>{
   await refreshAuth();
   if (mfaChallenge.isOpen() || mfaEnrollmentUserId || signupConfirmation.showIfPending()) return;
@@ -974,11 +1039,14 @@ async function openSalesPanel(fromRoute=false){
 }
 async function renderSalesWorkspace(){
  const root=document.getElementById('adminContent');
+ const request=++salesWorkspaceRequest;
+ const receiptSellerId=currentUser?.id;
  const [storesRes,productsRes,branchStockRes]=await Promise.all([
   supa.from('store_locations').select('id,name').eq('active',true).order('name'),
   supa.from('products').select('id,name,category,price,promotion_day,promotion_price,categoria_kit').eq('active',true).order('name'),
   readStockByStore('store_id,product_id,quantity')
  ]);
+ if(request!==salesWorkspaceRequest||!document.body.classList.contains('sales-mode')||currentUser?.id!==receiptSellerId)return;
  if(storesRes.error||productsRes.error||branchStockRes.error){root.innerHTML='<div class="admin-empty">Não foi possível carregar unidades e produtos. '+escapeHtml(storesRes.error?.message||productsRes.error?.message||branchStockRes.error?.message||'')+'</div>';return;}
  const day=storeDay();
  const stores=storesRes.data||[],itemsCatalog=(productsRes.data||[]).filter(p=>p.categoria_kit!=='embalagem').map(p=>({...p,price:catalogPrice(p,day)})),branchStock=branchStockRes.data||[];
@@ -986,7 +1054,6 @@ async function renderSalesWorkspace(){
  let lines=[];
  let selectedLine = null;
  let receiptOrderId = null;
- const receiptSellerId = currentUser.id;
  const getAvailable=(productId,storeId)=>Number(branchStock.find(x=>x.product_id===productId&&x.store_id===storeId)?.quantity||0);
  root.innerHTML = `
    <form id="assistedSaleForm" class="sale-desk admin-form">
@@ -1056,9 +1123,22 @@ async function renderSalesWorkspace(){
  const pin=document.getElementById('saleDiscountPin');
  const saleSearch=document.getElementById('saleProductSearch');saleSearch.addEventListener('input',()=>{const q=searchKey(saleSearch.value),selected=productSelect.value,filtered=itemsCatalog.filter(p=>searchKey(p.name+' '+p.category+' '+p.id).includes(q));productSelect.innerHTML=filtered.map(p=>'<option value="'+escapeHtml(p.id)+'" data-price="'+Number(p.price)+'">'+escapeHtml(p.name)+' · '+brl(Number(p.price))+'</option>').join('');productSelect.selectedIndex=filtered.findIndex(p=>p.id===selected);if(productSelect.selectedIndex<0&&filtered.length)productSelect.selectedIndex=0;document.getElementById('saleAddItem').disabled=!filtered.length;setDefaultPrice();});
  const updateStockHint=()=>{const available=getAvailable(productSelect.value,storeSelect.value),already=lines.filter(x=>x.id===productSelect.value).reduce((n,x)=>n+x.quantity,0);document.getElementById('saleStockHint').textContent='Saldo disponível na unidade selecionada: '+Math.max(0,available-already)+' unidade(s)';};
+ let stockRequest=0;
+ async function refreshSelectedStoreStock(){
+  const storeId=storeSelect.value;
+  const sequence=++stockRequest;
+  const {data,error}=await readStockByStore('store_id,product_id,quantity',storeId);
+  if(error||sequence!==stockRequest||!storeSelect.isConnected)return;
+  for(let index=branchStock.length-1;index>=0;index--){
+   if(branchStock[index].store_id===storeId)branchStock.splice(index,1);
+  }
+  branchStock.push(...data);
+  updateStockHint();
+ }
  const setDefaultPrice=()=>{const opt=productSelect.selectedOptions[0];priceInput.value=Number(opt?.dataset.price||0).toFixed(2);updateStockHint();};
  saleSearch.dispatchEvent(new Event('input'));
- productSelect.onchange=setDefaultPrice;storeSelect.onchange=updateStockHint;
+ productSelect.onchange=setDefaultPrice;
+ storeSelect.onchange=()=>{updateStockHint();void refreshSelectedStoreStock().catch(()=>{});};
  const totals=()=>{
   const subtotal=lines.reduce((sum,line)=>sum+Math.round(line.listPrice*100)*line.quantity,0);
   const value=Number(discountValue.value)||0;
@@ -1146,7 +1226,7 @@ async function renderSalesWorkspace(){
     saleForm.inert=false;button.disabled=false;button.textContent='Registrar pedido e reservar estoque';
   }
   const {data,error}=result;
-  if(error){toast('Venda não registrada: '+error.message);return;}
+  if(error){toast('Venda não registrada: '+error.message);void refreshSelectedStoreStock().catch(()=>{});return;}
   for(const line of lines){
     const stock=branchStock.find(row=>row.product_id===line.id&&row.store_id===storeId);
     if(stock)stock.quantity=Math.max(0,Number(stock.quantity)-line.quantity);
@@ -1299,12 +1379,36 @@ function stopAdminRefresh() {
  pauseAdminRefresh();
  adminRefreshDueAt = null;
  adminDashboardRequest++;
+ if(adminOrderFeed){
+  const channel=adminOrderFeed;
+  adminOrderFeed=null;
+  void supa.removeChannel(channel);
+ }
  setAdminPollStatus();
 }
 
-function canRefreshAdminOrders() {
- return ['orders', 'finance'].includes(activeAdminArea) &&
-   !document.activeElement?.closest('#adminContent form, #adminContent select');
+function queueAdminOrderRefresh() {
+ if(!isAdminDashboardOpen())return;
+ const eventDue=Date.now()+500;
+ if(adminRefreshDueAt!==null&&adminRefreshDueAt<=eventDue)return;
+ adminRefreshDueAt=eventDue;
+ pauseAdminRefresh();
+ scheduleAdminRefresh();
+}
+
+function startAdminOrderFeed(){
+ if(adminOrderFeed||!isAdminDashboardOpen())return;
+ const channel=supa.channel('emporio:admin:finance',{config:{private:true}});
+ adminOrderFeed=channel;
+ channel.on('broadcast',{event:'orders_changed'},queueAdminOrderRefresh);
+ void supa.realtime.setAuth().then(()=>{
+  if(adminOrderFeed===channel&&isAdminDashboardOpen())channel.subscribe(status=>{
+   if(status==='SUBSCRIBED')queueAdminOrderRefresh();
+  });
+ }).catch(()=>{
+  if(adminOrderFeed===channel)adminOrderFeed=null;
+  void supa.removeChannel(channel);
+ });
 }
 
 function scheduleAdminRefresh() {
@@ -1330,7 +1434,7 @@ async function refreshAdminOnTimer() {
    return;
   }
   renewed = true;
-  if (!document.hidden && canRefreshAdminOrders()) await loadAdminDashboard({background:true});
+  if (!document.hidden) await loadAdminDashboard({background:true});
  } catch {
   if (!isAdminDashboardOpen() || adminRefreshDueAt !== dueAt) return;
   if (!renewed) {
@@ -1354,16 +1458,78 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('focus', resumeAdminRefresh);
 
+function updateOrderStatusChart(statusChart,orders){
+ const counts=[0,0,0,0];
+ for(const order of orders){
+   if(order.status==='cancelled'||['failed','refunded'].includes(order.payment_status))counts[3]++;
+   else if(order.payment_status==='paid')counts[0]++;
+   else if(['confirmed','preparing','out_for_delivery'].includes(order.status))counts[1]++;
+   else counts[2]++;
+ }
+ const legs=['Pagos','Em andamento e não pagos','Pendentes','Cancelados, falhos ou estornados'];
+ const colors=['#405b47','#a2632a','#7d4561','#9d978a'];
+ let boundary=0;
+ const segments=counts.map((count,i)=>{
+   const start=boundary;
+   boundary+=orders.length?count/orders.length*100:0;
+   return colors[i]+' '+start+'% '+boundary+'%';
+ });
+ statusChart.innerHTML='<h2>Situação dos pedidos</h2><div class="order-chart"><div class="order-donut" aria-hidden="true"><strong>'+orders.length+'</strong></div><div><ul>'+legs.map((label,i)=>'<li><i style="background:'+colors[i]+'"></i><span>'+label+'</span><b>'+counts[i]+'</b></li>').join('')+'</ul><small>Até 250 pedidos recentes. Cada pedido aparece uma vez.</small></div></div>';
+ if(orders.length)statusChart.querySelector('.order-donut').style.background='conic-gradient('+segments.join(',')+')';
+}
+
+function applyAdminOrderFilter(content){
+ const query=content.querySelector('#adminOrderSearch').value.toLowerCase();
+ const filter=content.querySelector('#adminOrderFilter').value;
+ for(const card of content.querySelectorAll('#adminOrdersList .admin-order-card')){
+  const payment=card.querySelector('[data-payment-status]').value;
+  const cancelled=card.querySelector('[data-order-status]').value==='cancelled';
+  card.style.display=(card.textContent.toLowerCase().includes(query)&&
+   (filter==='all'||(filter==='cancelled'&&cancelled)||filter===payment))?'':'none';
+ }
+}
+
+function updateAdminFinancialView(content,stats,orders,methods,ordersHtml){
+ const fields={
+  revenue_paid:brl(Number(stats.revenue_paid||0)),
+  sales_total:brl(Number(stats.sales_total||0)),
+  pending_amount:brl(Number(stats.pending_amount||0)),
+  orders_total:Number(stats.orders_total||0),
+  orders_confirmed:Number(stats.orders_confirmed||0),
+  orders_paid:Number(stats.orders_paid||0),
+  orders_pending:Number(stats.orders_pending||0),
+  orders_completed:Number(stats.orders_completed||0),
+  discounts_total:brl(Number(stats.discounts_total||0)),
+  whatsapp_sales:brl(Number(stats.whatsapp_sales||0)),
+  online_sales:brl(Number(stats.online_sales||0)),
+  payment_counts:Number(stats.orders_paid||0)+' pagos · '+Number(stats.orders_pending||0)+' pendentes',
+  pending_count:Number(stats.orders_pending||0)+' pedido(s) não pagos'
+ };
+ for(const node of content.querySelectorAll('[data-finance-field]'))node.textContent=fields[node.dataset.financeField];
+ const methodsNode=content.querySelector('.admin-methods');
+ if(methodsNode.innerHTML!==methods)methodsNode.innerHTML=methods;
+ updateOrderStatusChart(content.querySelector('#adminOrderStatusChart'),orders);
+ if(document.activeElement?.closest('#adminOrdersList select'))return;
+ const list=content.querySelector('#adminOrdersList');
+ const orderId=details=>details.parentElement.querySelector('[data-order-status]').dataset.orderStatus;
+ const expanded=new Set([...list.querySelectorAll('details[open]')].map(orderId));
+ list.innerHTML=ordersHtml;
+ for(const details of list.querySelectorAll('details'))details.open=expanded.has(orderId(details));
+ applyAdminOrderFilter(content);
+}
+
 async function loadAdminDashboard({background = false} = {}){
  if (!isAdminDashboardOpen()) return;
  scheduleAdminRefresh();
+ if(!background)startAdminOrderFeed();
  const content=document.getElementById('adminContent');
+ if(background&&!content.querySelector('#adminOrdersList'))return;
  const request = ++adminDashboardRequest;
- const area = activeAdminArea;
  if (!background) content.innerHTML='<p>Carregando dados do negócio...</p>';
- const [summary,or,pr,cr,ir,mr,storesRes,storeInvRes,storeMovesRes,staffRes]=await Promise.all([
+ const responses=await Promise.all([
   supa.rpc('admin_finance_summary'),
   supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,payment_status,status,total_amount,subtotal_amount,discount_amount,sales_channel,seller_name,seller_email,store_id,created_at,gift_kits,store_locations(name),order_items(product_name,quantity,unit_price,list_unit_price,discount_amount,line_total,gift_kit_index)').order('created_at',{ascending:false}).limit(250),
+  ...(background?[]:[
   supa.from('profiles').select('id,full_name,phone,created_at').order('created_at',{ascending:false}).limit(500),
   supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,promotion_price,description,active,image_url,image_alt,'+PROFILE_FIELDS).order('name'),
   supa.from('inventory').select('product_id,quantity,updated_at'),
@@ -1372,17 +1538,19 @@ async function loadAdminDashboard({background = false} = {}){
   readStockByStore('store_id,product_id,quantity,updated_at'),
   supa.from('store_inventory_movements').select('id,store_id,product_id,movement_type,quantity,note,created_at,store_locations(name),products(name)').order('created_at',{ascending:false}).limit(80),
   supa.rpc('admin_list_sales_staff')
+  ]),
  ]);
+ const [summary,or,pr,cr,ir,mr,storesRes,storeInvRes,storeMovesRes,staffRes]=responses;
  if (request !== adminDashboardRequest || !isAdminDashboardOpen()) return;
- if (background && (document.hidden || activeAdminArea !== area || !canRefreshAdminOrders())) return;
- const failure=[summary,or,pr,cr,ir,mr,storesRes,storeInvRes,storeMovesRes,staffRes].find(x=>x.error);
+ if (background && document.hidden) return;
+ const failure=responses.find(x=>x.error);
  if (failure) {
   if (background) setAdminPollStatus('Não foi possível atualizar os pedidos. Nova tentativa em instantes.');
   else content.innerHTML='<div class="admin-empty">Não foi possível carregar os dados: '+escapeHtml(failure.error.message)+'</div>';
   return;
  }
  setAdminPollStatus();
- const stats=summary.data||{},orders=or.data||[],profiles=pr.data||[],productRows=cr.data||[],inventory=ir.data||[],movements=mr.data||[],stores=storesRes.data||[],storeInventory=storeInvRes.data||[],storeMovements=storeMovesRes.data||[],salesStaff=staffRes.data||[];
+ const stats=summary.data||{},orders=or.data||[],profiles=pr?.data||[],productRows=cr?.data||[],inventory=ir?.data||[],movements=mr?.data||[],stores=storesRes?.data||[],storeInventory=storeInvRes?.data||[],storeMovements=storeMovesRes?.data||[],salesStaff=staffRes?.data||[];
  const stock={};inventory.forEach(x=>stock[x.product_id]=Number(x.quantity));
  const methodLabels={pix:'Pix',dinheiro:'Dinheiro',cartao_entrega:'Cartão na entrega'};
  const paymentLabels={pending:'Não pago',paid:'Pago',failed:'Falhou',refunded:'Estornado'};
@@ -1396,15 +1564,19 @@ async function loadAdminDashboard({background = false} = {}){
   return '<article class="admin-order-card"><div class="admin-order-head"><b>Pedido #'+escapeHtml(o.id.slice(0,8))+' · '+brl(Number(o.total_amount))+'</b><span class="admin-pill">'+escapeHtml(paymentLabels[o.payment_status]||'Não pago')+'</span></div><small>'+new Date(o.created_at).toLocaleString('pt-BR')+' · '+escapeHtml(o.customer_name)+' · '+escapeHtml(o.customer_phone)+'</small><p><b>Origem:</b> '+channel+'<br><b>Unidade de saída:</b> '+escapeHtml(store)+seller+'<br><b>Entrega/retirada:</b> '+escapeHtml(o.delivery_address)+'<br><b>Pagamento:</b> '+escapeHtml(methodLabels[o.payment_method]||o.payment_method||'—')+'</p><details><summary>Detalhamento financeiro e itens</summary><p>Subtotal: '+brl(Number(o.subtotal_amount||o.total_amount))+'<br>Descontos totais: '+brl(Number(o.discount_amount||0))+'<br><b>Valor final: '+brl(Number(o.total_amount))+'</b></p><ul>'+items+'</ul></details><div class="admin-order-controls"><label>Andamento<select data-order-status="'+escapeHtml(o.id)+'">'+Object.entries(orderLabels).map(([v,l])=>'<option value="'+v+'" '+(o.status===v?'selected':'')+'>'+l+'</option>').join('')+'</select></label><label>Pagamento<select data-payment-status="'+escapeHtml(o.id)+'">'+Object.entries(paymentLabels).map(([v,l])=>'<option value="'+v+'" '+((o.payment_status||'pending')===v?'selected':'')+'>'+l+'</option>').join('')+'</select></label></div></article>';
  }).join('')||'<div class="admin-empty">Nenhum pedido registrado até agora.</div>';
  const productOptions=productRows.map(p=>'<option value="'+escapeHtml(p.id)+'">'+escapeHtml(p.name)+'</option>').join('');
+ if(background){
+  updateAdminFinancialView(content,stats,orders,methods,ordersHtml);
+  return;
+ }
  const stockRows=productRows.map(p=>{const qty=stock[p.id]??0;const updated=inventory.find(x=>x.product_id===p.id)?.updated_at||p.created_at;return '<tr data-stock-item="'+escapeHtml(p.id)+'"><td><b>'+escapeHtml(p.name)+'</b><br><small>'+escapeHtml([p.category,p.country].filter(Boolean).join(' · '))+'</small></td><td>'+(p.active?'Publicado':'Oculto')+'</td><td><strong class="'+(qty<=3?'admin-stock-low':'admin-stock-ok')+'">'+qty+'</strong></td><td>'+new Date(updated).toLocaleDateString('pt-BR')+'</td></tr>';}).join('')||'<tr><td colspan="4">Nenhum produto cadastrado.</td></tr>';
  const movementNames={entrada:'Entrada',saida:'Saída',ajuste:'Ajuste'};
  const movementRows=movements.map(m=>'<tr><td>'+new Date(m.created_at).toLocaleString('pt-BR')+'</td><td>'+escapeHtml(m.products?.name||m.product_id)+'</td><td>'+escapeHtml(movementNames[m.movement_type]||m.movement_type)+'</td><td>'+m.quantity+'</td><td>'+escapeHtml(m.note||'—')+'</td></tr>').join('')||'<tr><td colspan="5">Nenhuma movimentação registrada.</td></tr>';
  const productAdminRows=productRows.map(p=>'<tr><td><div class="admin-product-cell">'+(p.image_url?'<img src="'+escapeHtml(p.image_url)+'" alt="" loading="lazy">':'<span class="admin-product-placeholder">M</span>')+'<b>'+escapeHtml(p.name)+'</b></div></td><td>'+escapeHtml(p.category||'')+'</td><td>'+brl(Number(p.price))+(p.compare_at_price&&Number(p.compare_at_price)>Number(p.price)?'<br><small class="admin-old-price">'+brl(Number(p.compare_at_price))+' · '+Math.round((1-Number(p.price)/Number(p.compare_at_price))*100)+'% OFF</small>':'')+'</td><td>'+(stock[p.id]??0)+'</td><td>'+(p.active?'Publicado':'Oculto')+'</td><td><button class="admin-secondary" type="button" data-edit="'+escapeHtml(p.id)+'">Editar</button> <button class="admin-secondary" type="button" data-toggle="'+escapeHtml(p.id)+'" data-active="'+p.active+'">'+(p.active?'Ocultar':'Publicar')+'</button></td></tr>').join('');
  content.innerHTML=
  '<section class="admin-welcome" style="display:flex;align-items:center;gap:18px;margin:0 0 22px;padding:22px 26px;border:1px solid #e9e3da;border-left:4px solid #9b7955;border-radius:14px;background:#f8f6f2;color:#292724;box-shadow:0 5px 18px rgba(35,31,27,.045)"><div style="flex:0 0 42px;width:42px;height:42px;display:grid;place-items:center;border-radius:50%;background:#eee8df;color:#806548;font-family:Georgia,serif;font-size:22px">M</div><div style="min-width:0"><div style="font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:#8a755d;font-weight:700;margin-bottom:5px">EMPÓRIO MILÃO · CENTRAL DE GESTÃO</div><h2 style="font-family:Georgia,serif;font-size:clamp(21px,3vw,28px);font-weight:500;line-height:1.2;margin:0 0 5px;color:#292724">Seja bem-vindo, Sr. Luiz, ao controle da sua empresa.</h2><p style="font-size:13px;line-height:1.5;color:#6d6861;margin:0">Acompanhe os resultados e a operação em um só lugar.</p></div></section>'+
- '<div class="admin-kpis"><div class="admin-kpi"><small>Faturamento recebido</small><strong>'+brl(Number(stats.revenue_paid||0))+'</strong><em>Somente pagamentos confirmados</em></div><div class="admin-kpi"><small>Vendas não canceladas</small><strong>'+brl(Number(stats.sales_total||0))+'</strong><em>Valor total dos pedidos válidos</em></div><div class="admin-kpi"><small>Valores a receber</small><strong>'+brl(Number(stats.pending_amount||0))+'</strong><em>'+Number(stats.orders_pending||0)+' pedido(s) não pagos</em></div><div class="admin-kpi"><small>Total de pedidos</small><strong>'+Number(stats.orders_total||0)+'</strong><em>'+Number(stats.orders_paid||0)+' pagos · '+Number(stats.orders_pending||0)+' pendentes</em></div><div class="admin-kpi"><small>Pedidos confirmados</small><strong>'+Number(stats.orders_confirmed||0)+'</strong><em>Confirmados ou em andamento</em></div></div>'+
- '<div class="admin-kpis" style="margin-top:13px"><div class="admin-kpi"><small>Pedidos pagos</small><strong>'+Number(stats.orders_paid||0)+'</strong><em>Pagamento confirmado</em></div><div class="admin-kpi"><small>Pedidos não pagos</small><strong>'+Number(stats.orders_pending||0)+'</strong><em>Aguardando recebimento</em></div><div class="admin-kpi"><small>Pedidos concluídos</small><strong>'+Number(stats.orders_completed||0)+'</strong><em>Entrega finalizada</em></div><div class="admin-kpi"><small>Clientes cadastrados</small><strong>'+profiles.length+'</strong><em>Perfis carregados</em></div></div>'+
- '<div class="admin-kpis" style="margin-top:13px"><div class="admin-kpi"><small>Descontos concedidos</small><strong>'+brl(Number(stats.discounts_total||0))+'</strong><em>Pedidos não cancelados</em></div><div class="admin-kpi"><small>Vendas pelo WhatsApp</small><strong>'+brl(Number(stats.whatsapp_sales||0))+'</strong><em>Vendas assistidas</em></div><div class="admin-kpi"><small>Vendas pelo site</small><strong>'+brl(Number(stats.online_sales||0))+'</strong><em>Pedidos online</em></div><div class="admin-kpi"><small>Unidades</small><strong>'+stores.length+'</strong><em>Estoques separados</em></div></div>'+
+ '<div class="admin-kpis"><div class="admin-kpi"><small>Faturamento recebido</small><strong data-finance-field="revenue_paid">'+brl(Number(stats.revenue_paid||0))+'</strong><em>Somente pagamentos confirmados</em></div><div class="admin-kpi"><small>Vendas não canceladas</small><strong data-finance-field="sales_total">'+brl(Number(stats.sales_total||0))+'</strong><em>Valor total dos pedidos válidos</em></div><div class="admin-kpi"><small>Valores a receber</small><strong data-finance-field="pending_amount">'+brl(Number(stats.pending_amount||0))+'</strong><em data-finance-field="pending_count">'+Number(stats.orders_pending||0)+' pedido(s) não pagos</em></div><div class="admin-kpi"><small>Total de pedidos</small><strong data-finance-field="orders_total">'+Number(stats.orders_total||0)+'</strong><em data-finance-field="payment_counts">'+Number(stats.orders_paid||0)+' pagos · '+Number(stats.orders_pending||0)+' pendentes</em></div><div class="admin-kpi"><small>Pedidos confirmados</small><strong data-finance-field="orders_confirmed">'+Number(stats.orders_confirmed||0)+'</strong><em>Confirmados ou em andamento</em></div></div>'+
+ '<div class="admin-kpis" style="margin-top:13px"><div class="admin-kpi"><small>Pedidos pagos</small><strong data-finance-field="orders_paid">'+Number(stats.orders_paid||0)+'</strong><em>Pagamento confirmado</em></div><div class="admin-kpi"><small>Pedidos não pagos</small><strong data-finance-field="orders_pending">'+Number(stats.orders_pending||0)+'</strong><em>Aguardando recebimento</em></div><div class="admin-kpi"><small>Pedidos concluídos</small><strong data-finance-field="orders_completed">'+Number(stats.orders_completed||0)+'</strong><em>Entrega finalizada</em></div><div class="admin-kpi"><small>Clientes cadastrados</small><strong>'+profiles.length+'</strong><em>Perfis carregados</em></div></div>'+
+ '<div class="admin-kpis" style="margin-top:13px"><div class="admin-kpi"><small>Descontos concedidos</small><strong data-finance-field="discounts_total">'+brl(Number(stats.discounts_total||0))+'</strong><em>Pedidos não cancelados</em></div><div class="admin-kpi"><small>Vendas pelo WhatsApp</small><strong data-finance-field="whatsapp_sales">'+brl(Number(stats.whatsapp_sales||0))+'</strong><em>Vendas assistidas</em></div><div class="admin-kpi"><small>Vendas pelo site</small><strong data-finance-field="online_sales">'+brl(Number(stats.online_sales||0))+'</strong><em>Pedidos online</em></div><div class="admin-kpi"><small>Unidades</small><strong>'+stores.length+'</strong><em>Estoques separados</em></div></div>'+
  '<section class="admin-section"><h2>Financeiro por método de pagamento</h2><div class="admin-methods">'+methods+'</div><p style="font-size:11px;color:#7c7164;margin:12px 0 0">O faturamento só considera pedidos marcados manualmente como “Pago”. A escolha de Pix, dinheiro ou cartão não significa que o dinheiro já foi recebido.</p></section>'+
  '<section class="admin-section"><h2>Pedidos e recebimentos</h2><div class="admin-heading-tools"><input class="admin-filter" id="adminOrderSearch" placeholder="Buscar cliente, telefone ou pedido"><select class="admin-filter" id="adminOrderFilter"><option value="all">Todos</option><option value="paid">Pagos</option><option value="pending">Não pagos</option><option value="cancelled">Cancelados</option></select></div><div id="adminOrdersList">'+ordersHtml+'</div><p style="font-size:11px;color:#887e70">Exibindo os 250 pedidos mais recentes. Os indicadores financeiros acima consideram todo o histórico.</p></section>'+
  '<section class="admin-section"><h2>Equipe de vendas online</h2><p style="font-size:13px;color:#786e61">Libere o e-mail de acesso ao caixa. A assistente escolhe seu nome no painel, e o pedido registra esse nome junto com a conta usada.</p><form id="salesStaffForm" class="admin-form"><div class="admin-form-grid"><label>Nome do atendente<input id="staffName" required maxlength="100" placeholder="Nome e sobrenome"></label><label>E-mail autorizado<input id="staffEmail" type="email" required maxlength="180" placeholder="atendente@empresa.com"></label><label>Status<select id="staffActive"><option value="true">Ativo</option><option value="false">Bloqueado</option></select></label></div><button type="submit" class="admin-primary">Salvar acesso de atendente</button></form><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Atendente</th><th>E-mail</th><th>Acesso</th></tr></thead><tbody>'+salesStaff.map(s=>'<tr><td>'+escapeHtml(s.full_name)+'</td><td>'+escapeHtml(s.email)+'</td><td>'+(s.active?'Ativo':'Bloqueado')+'</td></tr>').join('')+'</tbody></table></div><p style="font-size:12px;color:#786e61">Link de acesso para a equipe: <a href="?vendas=1" target="_blank" rel="noopener">Abrir lançamento de vendas</a>. O atendente precisa ter uma conta cadastrada com o mesmo e-mail liberado.</p></section>'+'<section class="admin-section"><h2>Estoque do galpão</h2><p style="font-size:13px;color:#786e61">Registre compras, reposições e ajustes. Quando um pedido mudar para “Saiu para entrega”, a quantidade dos produtos será baixada automaticamente; se o pedido for cancelado após a saída, o saldo será reposto. Todas as movimentações ficam no histórico.</p><form id="stockMovementForm" class="admin-form"><div class="admin-form-grid"><label>Produto<select id="stockProduct" required>'+productOptions+'</select></label><label>Tipo<select id="stockType"><option value="entrada">Entrada no galpão</option><option value="saida">Saída do galpão</option><option value="ajuste">Ajustar saldo para</option></select></label><label>Quantidade<input id="stockQuantity" type="number" min="1" step="1" required placeholder="Ex.: 12"></label><label>Observação<input id="stockNote" maxlength="180" placeholder="Compra, reposição, retirada..."></label></div><button class="admin-primary" type="submit">Registrar movimentação</button></form><h3>Saldo atual por produto</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Produto</th><th>Catálogo</th><th>Quantidade</th><th>Atualizado</th></tr></thead><tbody>'+stockRows+'</tbody></table></div><h3>Histórico de entradas e saídas</h3><div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Data</th><th>Produto</th><th>Movimento</th><th>Quantidade</th><th>Observação</th></tr></thead><tbody>'+movementRows+'</tbody></table></div></section>'+
@@ -1474,23 +1646,8 @@ async function loadAdminDashboard({background = false} = {}){
 
  const statusChart=document.createElement('section');
  statusChart.className='admin-section';
- const counts=[0,0,0,0];
- for(const order of orders){
-   if(order.status==='cancelled'||['failed','refunded'].includes(order.payment_status))counts[3]++;
-   else if(order.payment_status==='paid')counts[0]++;
-   else if(['confirmed','preparing','out_for_delivery'].includes(order.status))counts[1]++;
-   else counts[2]++;
- }
- const legs=['Pagos','Em andamento e não pagos','Pendentes','Cancelados, falhos ou estornados'];
- const colors=['#405b47','#a2632a','#7d4561','#9d978a'];
- let boundary=0;
- const segments=counts.map((count,i)=>{
-   const start=boundary;
-   boundary+=orders.length?count/orders.length*100:0;
-   return colors[i]+' '+start+'% '+boundary+'%';
- });
- statusChart.innerHTML='<h2>Situação dos pedidos</h2><div class="order-chart"><div class="order-donut" aria-hidden="true"><strong>'+orders.length+'</strong></div><div><ul>'+legs.map((label,i)=>'<li><i style="background:'+colors[i]+'"></i><span>'+label+'</span><b>'+counts[i]+'</b></li>').join('')+'</ul><small>Até 250 pedidos recentes. Cada pedido aparece uma vez.</small></div></div>';
- if(orders.length)statusChart.querySelector('.order-donut').style.background='conic-gradient('+segments.join(',')+')';
+ statusChart.id='adminOrderStatusChart';
+ updateOrderStatusChart(statusChart,orders);
  areaPanels.finance.prepend(statusChart);
 
  const promotionPanel=areaPanels.promotions;
@@ -1563,8 +1720,29 @@ async function loadAdminDashboard({background = false} = {}){
    const selected=productRows.find(row=>row.id===document.getElementById('editProductId')?.value);
    if(selected)profileEditor.fill(selected);
  }).catch(()=>toast('Não foi possível abrir as áreas de fichas e kits.'));
- content.querySelectorAll('[data-order-status]').forEach(sel=>sel.onchange=async()=>{const {error}=await supa.from('orders').update({status:sel.value,updated_at:new Date().toISOString()}).eq('id',sel.dataset.orderStatus);toast(error?'Falha ao atualizar pedido.':'Andamento atualizado.');if(!error)await loadAdminDashboard();});
- content.querySelectorAll('[data-payment-status]').forEach(sel=>sel.onchange=async()=>{const v=sel.value;const {error}=await supa.from('orders').update({payment_status:v,paid_at:v==='paid'?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq('id',sel.dataset.paymentStatus);toast(error?'Falha ao atualizar pagamento.':'Pagamento atualizado.');if(!error)await loadAdminDashboard();});
+ const orderList=content.querySelector('#adminOrdersList');
+ orderList.addEventListener('focusout',event=>{
+  if(event.target.matches('select'))queueAdminOrderRefresh();
+ });
+ orderList.onchange=async event=>{
+  const select=event.target;
+  const {orderStatus,paymentStatus}=select.dataset;
+  const orderId=orderStatus||paymentStatus;
+  if(!orderId)return;
+  const updated_at=new Date().toISOString();
+  const changes=orderStatus?{status:select.value,updated_at}:
+   {payment_status:select.value,paid_at:select.value==='paid'?updated_at:null,updated_at};
+  select.disabled=true;
+  try{
+   const {error}=await supa.from('orders').update(changes).eq('id',orderId);
+   toast(error?'Falha ao atualizar pedido.':orderStatus?'Andamento atualizado.':'Pagamento atualizado.');
+  }catch{toast('Falha ao atualizar pedido.');}
+  finally{
+   select.disabled=false;
+   select.blur();
+   queueAdminOrderRefresh();
+  }
+ };
  document.getElementById('salesStaffForm').onsubmit=async e=>{e.preventDefault();const {error}=await supa.rpc('admin_manage_sales_staff',{p_email:document.getElementById('staffEmail').value.trim().toLowerCase(),p_full_name:document.getElementById('staffName').value.trim(),p_active:document.getElementById('staffActive').value==='true',p_max_discount_percent:3});if(error){toast('Não foi possível salvar o acesso: '+error.message);return;}toast('Permissão de vendas atualizada.');await loadAdminDashboard();};
  document.getElementById('storeStockForm').onsubmit=async e=>{e.preventDefault();const {data,error}=await supa.rpc('register_store_stock_movement',{p_store_id:document.getElementById('branchStore').value,p_product_id:document.getElementById('branchProduct').value,p_movement_type:document.getElementById('branchMovement').value,p_quantity:Number(document.getElementById('branchQuantity').value),p_note:document.getElementById('branchNote').value.trim()||null});if(error){toast('Falha ao atualizar estoque da unidade: '+error.message);return;}toast('Estoque da unidade atualizado. Saldo: '+data);await loadAdminDashboard();};
  document.getElementById('stockMovementForm').onsubmit=async e=>{e.preventDefault();const {data,error}=await supa.rpc('register_stock_movement',{p_product_id:document.getElementById('stockProduct').value,p_movement_type:document.getElementById('stockType').value,p_quantity:Number(document.getElementById('stockQuantity').value),p_note:document.getElementById('stockNote').value.trim()||null});if(error){toast('Falha no estoque: '+error.message);return;}toast('Movimentação registrada. Saldo atual: '+data);await loadAdminDashboard();};
@@ -1573,10 +1751,11 @@ async function loadAdminDashboard({background = false} = {}){
  document.getElementById('clearProduct').onclick=()=>{document.getElementById('productForm').reset();document.getElementById('editProductId').value='';document.getElementById('pImageUrl').value='';document.getElementById('pImageFile').value='';profileEditor?.fill({});};
  content.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>{const p=productRows.find(x=>x.id===btn.dataset.edit);if(!p)return;document.getElementById('editProductId').value=p.id;document.getElementById('pName').value=p.name;const categorySelect=document.getElementById('pCategory'),countrySelect=document.getElementById('pCountry');if(p.category&&!Array.from(categorySelect.options).some(o=>o.value===p.category))categorySelect.add(new Option(p.category,p.category));if(p.country&&!Array.from(countrySelect.options).some(o=>o.value===p.country))countrySelect.add(new Option(p.country,p.country));categorySelect.value=p.category;countrySelect.value=p.country||'';document.getElementById('pPrice').value=p.price;document.getElementById('pComparePrice').value=p.compare_at_price||'';document.getElementById('pDescription').value=p.description||'';document.getElementById('pImageUrl').value=p.image_url||'';document.getElementById('pImageFile').value='';profileEditor?.fill(p);document.getElementById('productForm').scrollIntoView({behavior:'smooth',block:'center'});});
  content.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{const {error}=await supa.from('products').update({active:btn.dataset.active!=='true',updated_at:new Date().toISOString()}).eq('id',btn.dataset.toggle);if(error){toast('Não foi possível alterar o produto.');return;}await loadProducts();await loadAdminDashboard();});
- const search=document.getElementById('adminOrderSearch'),filter=document.getElementById('adminOrderFilter');const applyFilter=()=>{const q=search.value.toLowerCase(),v=filter.value;content.querySelectorAll('.admin-order-card').forEach(card=>{const text=card.textContent.toLowerCase(),pay=card.querySelector('[data-payment-status]')?.value||'pending',cancel=card.querySelector('[data-order-status]')?.value==='cancelled';card.style.display=(!q||text.includes(q))&&(v==='all'||(v==='paid'&&pay==='paid')||(v==='pending'&&pay==='pending')||(v==='cancelled'&&cancel))?'':'none';});};search.oninput=applyFilter;filter.onchange=applyFilter;
+ content.querySelector('#adminOrderSearch').oninput=()=>applyAdminOrderFilter(content);
+ content.querySelector('#adminOrderFilter').onchange=()=>applyAdminOrderFilter(content);
 }
 adminOpenButton.onclick=()=>openAdminPanel();
-salesOpenButton.onclick=()=>openSalesPanel();
+salesOpenButton.onclick=()=>dedicatedSalesSession?openSalesPanel():window.open('/?vendas=1','_blank','noopener');
 document.getElementById('adminBackToStore').onclick=closeAdminPage;
 document.getElementById('adminBackToStore').textContent='← Voltar';
 document.getElementById('adminRefresh').onclick=loadAdminDashboard;

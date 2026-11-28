@@ -33,6 +33,7 @@ function environment(assurance, requirement, result = {}) {
   };
   const context = {
     recoveryOpen:false,
+    dedicatedSalesSession:false,
     isAdminDashboardOpen: () => false,
     readAssurance: async ()=>assurance,
     currentUser:null, cartOwnerId:null, currentProfile:null, isAdmin:false,isSalesStaff:false,
