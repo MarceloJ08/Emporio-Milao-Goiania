@@ -52,6 +52,7 @@ header {
 
 .hero.cellar-opening {
   position: relative;
+  display: block;
   min-height: 0;
   overflow: hidden;
   isolation: isolate;
@@ -62,6 +63,10 @@ header {
   position: absolute;
   z-index: -1;
   inset: 0;
+  width: auto;
+  height: auto;
+  border: 0;
+  border-radius: 0;
   content: '';
   background:
     linear-gradient(102deg, #0c0606e8 0%, #201007db 50%, #2d1a0c91 100%),
@@ -77,12 +82,11 @@ header {
   padding: clamp(30px, 4.6vw, 68px) clamp(20px, 5vw, 78px);
 }
 .cellar-intro h1 {
-  max-width: 13ch;
+  max-width: none;
   margin: 0;
   color: #fbf0df;
-  font: 400 clamp(48px, 5.4vw, 83px)/.99 'DM Serif Display', Georgia, serif;
+  font: 400 clamp(43px, 4.5vw, 76px)/1.02 'DM Serif Display', Georgia, serif;
   letter-spacing: -.037em;
-  text-wrap: balance;
 }
 .cellar-intro > p {
   max-width: 40ch;
@@ -107,6 +111,7 @@ header {
 .cellar-gallery {
   display: grid;
   grid-template-columns: 1fr .94fr;
+  grid-template-rows: minmax(0,1fr);
   gap: clamp(4px, .7vw, 10px);
   height: clamp(420px, 41vw, 590px);
   margin: 0;
@@ -203,7 +208,7 @@ header {
 @media (max-width: 850px) {
   .nav .links { background: #1c100b; }
   .cellar-opening-inner { grid-template-columns: 1fr; gap: 24px; padding-block: 34px 30px; }
-  .cellar-intro h1 { font-size: clamp(42px, 9.7vw, 65px); }
+  .cellar-intro h1 { font-size: clamp(34px, 8.2vw, 60px); }
   .cellar-gallery { height: clamp(245px, 73vw, 460px); }
 }
 @media (max-width: 420px) {
