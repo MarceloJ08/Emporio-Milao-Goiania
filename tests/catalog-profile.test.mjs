@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {recommendWines,wineReason,wineOverview,eligibleStores,generateWineCopy,suggestWineFacts,hasOffensiveText} from '../src/js/catalog-profile.mjs';
+import {recommendWines,wineReason,wineOverview,parseWineBudget,eligibleStores,generateWineCopy,suggestWineFacts,hasOffensiveText} from '../src/js/catalog-profile.mjs';
 
 const stores=[{id:'ns',name:'Nova Suíça'},{id:'ag',name:'Alto da Glória'}];
 const red={id:'red',name:'Tinto de teste',tipo_vinho:'tinto',corpo:'encorpado',estilo:'seco',aromas:['ameixa'],ocasioes:['churrasco'],harmoniza_com:['carne'],price:129};
@@ -24,11 +24,18 @@ test('recomenda por perfil, exclui estoque zerado e não usa fichas incompletas'
  assert.deepEqual(recommendWines(products,{stores,stock:{}},{budget:'qualquer'}).results,[]);
 });
 
-test('amplia o orçamento em até 20% e não usa ramo sem estoque',()=>{
- const picks=[{...red,price:151},{...white,price:180},{...sparkling,price:180.01}];
- const results=recommendWines(picks,catalog,{budget:'ate150',occasion:'churrasco',food:'carne',taste:'encorpado'});
- assert.equal(results.relaxed,true);
- assert.deepEqual(results.results.map(hit=>hit.product.id),['red','white']);
+test('respeita faixa e teto exato, inclusive diferença de um centavo',()=>{
+ const picks=[{...red,price:150.01},white,sparkling];
+ const answers={budget:'ate150',occasion:'churrasco',food:'carne',taste:'encorpado'};
+ assert.deepEqual(recommendWines(picks,catalog,answers).results,[]);
+ assert.deepEqual(recommendWines(picks,catalog,{...answers,budget:'personalizado',budgetMax:150}).results,[]);
+ assert.deepEqual(recommendWines(picks,catalog,{...answers,budget:'personalizado',budgetMax:150.01}).results.map(hit=>hit.product.id),['red']);
+ assert.deepEqual(recommendWines([red,sparkling],catalog,{...answers,budget:'150a400',food:'nenhuma',taste:'surpresa'}).results.map(hit=>hit.product.id),['sparkling']);
+ assert.equal(parseWineBudget('180,50'),180.5);
+ assert.equal(parseWineBudget('1.200,50'),1200.5);
+ assert.equal(parseWineBudget('180.50'),180.5);
+ assert.equal(parseWineBudget('0'),null);
+ assert.equal(parseWineBudget('1e3'),null);
  assert.deepEqual(eligibleStores(catalog,['red','sparkling']),[stores[0]]);
  assert.deepEqual(eligibleStores(catalog,['red','white']),[]);
 });
@@ -53,5 +60,20 @@ test('mostra o texto cadastrado de cada rótulo e mantém a harmonização ligad
  const answers={occasion:'churrasco',food:'carne',budget:'ate150',taste:'encorpado'};
  const {results}=recommendWines([tinto,branco],catalog,answers);
  assert.match(wineReason(results[0],answers),/harmoniza com carne/);
- assert.doesNotMatch(wineReason(results[1],answers),/harmoniza com carne/);
+ assert.deepEqual(results.map(hit=>hit.product.id),['red']);
+});
+
+test('distingue molhos e só usa regras gerais com dados da ficha',()=>{
+ const tomatoWine={...red,acidez:'alta',harmoniza_com:['massa']};
+ const creamWine={...white,acidez:'media',harmoniza_com:['massa']};
+ const choices=[tomatoWine,creamWine];
+ const answers={occasion:'jantar_a_dois',budget:'ate150',taste:'surpresa'};
+ const tomato=recommendWines(choices,catalog,{...answers,food:'massa_tomate'}).results;
+ const creamy=recommendWines(choices,catalog,{...answers,food:'massa_cremosa'}).results;
+ assert.deepEqual(tomato.map(hit=>hit.product.id),['red']);
+ assert.deepEqual(creamy.map(hit=>hit.product.id),['white']);
+ assert.match(wineReason(tomato[0],{...answers,food:'massa_tomate'}),/acidez alta.*molho de tomate/);
+ assert.deepEqual(recommendWines([{...tomatoWine,acidez:null}],catalog,{...answers,food:'massa_tomate'}).results,[]);
+ assert.deepEqual(recommendWines(choices,catalog,{...answers,food:'massa_tomate',taste:'leve'}).results,[]);
+ assert.deepEqual(recommendWines([{...red,harmoniza_com:['peixe'],taninos:'alta'}],catalog,{...answers,food:'peixe'}).results,[]);
 });

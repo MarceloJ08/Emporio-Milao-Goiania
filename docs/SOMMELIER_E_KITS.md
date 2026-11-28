@@ -17,6 +17,17 @@ Em uma base de teste, cadastre os exemplos abaixo em **Produtos** no ADM. São d
 
 O saldo usado pelo Sommelier e pelo kit é o da unidade. Os testes automatizados de recomendação, estoque e descrições rodam com `node --test tests/*.test.mjs`.
 
+## Orçamento e harmonização
+
+O Sommelier respeita a faixa selecionada ou o teto em reais por garrafa. Ao testar, informe R$ 128,99 para o tinto de R$ 129 e confirme que ele fica fora. Depois informe R$ 129 e confira a indicação com churrasco, carne vermelha e preferência por vinho encorpado.
+
+O molho muda a recomendação. Para tomate, a ficha precisa registrar um tinto seco com acidez alta. Para molho cremoso, é necessário um branco seco com acidez média ou alta. As indicações para queijos vêm do cadastro de cada rótulo. Se a ficha não confirmar uma combinação, o Sommelier só usa regras gerais quando os atributos relevantes estão preenchidos.
+
+- Massas e acidez. [Guia de harmonização da WSET](https://www.wsetglobal.com/knowledge-centre/blog/2020/june/02/how-to-pair-wine-with-your-favourite-takeaway-meals) · [Guia de comida italiana da Vivino](https://www.vivino.com/en/wine-news/drinks-with-delivery-italian-food)
+- Carne vermelha, corpo e taninos. [Guia de cortes da Vivino](https://www.vivino.com/en/wine-news/discover-the-best-wine-with-beef-a-cut-by-cut-guide)
+- Peixes e taninos. [Guia de peixes da Vivino](https://www.vivino.com/en/wine-news/the-insider-guide-to-wine-and-fish-pairing)
+- Queijos e harmonizações específicas. [Guia de Ramón Bilbao](https://bodegasramonbilbao.com/maridaje-de-vino-y-queso-siente-el-alma-de-ramon-bilbao-crianza/) · [Ficha do Chandon Réserve Brut](https://www.chandon.com.br/chandon-reserve-brut)
+
 ## Kit de Natal
 
 1. Na base de teste, marque o tinto como elegível ao kit na categoria **Vinho**. Cadastre um queijo como **Queijo** e vincule-o em **Produtos que combinam** no vinho. Ajuste saldo de ambos na Nova Suíça.

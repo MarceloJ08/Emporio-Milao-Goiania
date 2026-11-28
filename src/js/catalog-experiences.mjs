@@ -1,5 +1,5 @@
 
-import {BODY,STYLE,TYPE,INTENSITY,FOOD,OCCASION,KIT_CATEGORY,GIFT_OCCASION,CARD_STYLE,BUDGET,TASTE,PROFILE_FIELDS,eligibleStores,totalAvailability,recommendWines,wineReason,wineOverview,money,safeHtml as h,hasOffensiveText} from './catalog-profile.mjs';
+import {BODY,STYLE,TYPE,INTENSITY,FOOD,OCCASION,KIT_CATEGORY,GIFT_OCCASION,CARD_STYLE,BUDGET,TASTE,PROFILE_FIELDS,SOMMELIER_FOOD,eligibleStores,totalAvailability,recommendWines,wineInBudget,parseWineBudget,wineReason,wineOverview,money,safeHtml as h,hasOffensiveText} from './catalog-profile.mjs';
 
 let client;
 let pageDialog;
@@ -46,12 +46,18 @@ const addToBag=(dialog,id)=>{client.add(id);dialog.close();client.openCart();};
 
 const QUESTIONS=[
   ['occasion','Qual é a ocasião?',Object.entries(OCCASION).filter(([id])=>id!=='dia_a_dia')],
-  ['food','O que vai à mesa?',[...Object.entries(FOOD).filter(([id])=>['carne','massa','queijo','peixe'].includes(id)),['nenhuma','Só o vinho']]],
-  ['budget','Quanto você quer investir?',Object.entries(BUDGET).map(([id,v])=>[id,v.label])],
+  ['food','O que vai à mesa?',Object.entries(SOMMELIER_FOOD).map(([id,v])=>[id,v.label])],
+  ['budget','Quanto você quer gastar por garrafa?',Object.entries(BUDGET).map(([id,v])=>[id,v.label])],
   ['taste','Que tipo de vinho você prefere?',Object.entries(TASTE)],
 ];
 const answerLabel=(key,value)=>QUESTIONS.find(q=>q[0]===key)?.[2].find(x=>x[0]===value)?.[1]||value;
-const whatsapp=(answers,question='')=>client.waLink('Olá! Usei o Sommelier. '+Object.entries(answers).map(([k,v])=>labels[k]+' '+answerLabel(k,v)).join(', ')+'. '+(question||'Pode me ajudar?'));
+const budgetLabel=answers=>answers.budget==='personalizado'?'Até '+money(answers.budgetMax):answerLabel('budget',answers.budget);
+const whatsapp=(answers,question='')=>client.waLink('Olá! Usei o Sommelier. '+Object.keys(labels).filter(key=>answers[key]).map(key=>labels[key]+' '+(key==='budget'?budgetLabel(answers):answerLabel(key,answers[key]))).join(', ')+'. '+(question||'Pode me ajudar?'));
+function analyticsAnswers(answers){
+  const {occasion,taste,budget,budgetMax,food}=answers;
+  const bracket=Object.entries(BUDGET).find(([,range])=>budgetMax<=range.max)?.[0];
+  return {occasion,taste,budget:budget==='personalizado'?bracket:budget,food:SOMMELIER_FOOD[food].group};
+}
 
 export function openSommelier() {
   const {dialog,panel}=modal('Sommelier do Empório');
@@ -60,12 +66,25 @@ export function openSommelier() {
     const [key,title,options]=QUESTIONS[step];
     panel.innerHTML=`<div class="feature-progress"><progress value="${step+1}" max="4"></progress><span>${step+1} de 4</span></div>
       <h3 tabindex="-1">${h(title)}</h3><div class="feature-options">${options.map(([id,label])=>action('data-answer',id,label)).join('')}</div>
+      ${key==='budget'?'<form class="feature-question"><label>Ou informe seu valor máximo (R$)<input name="maxPrice" inputmode="decimal" placeholder="Ex.: 180,00" maxlength="15" required></label><button class="feature-button" type="submit">Usar este valor</button><p role="status" class="feature-answer"></p></form>':''}
       ${step?action('data-sommelier','back','Voltar'):''}`;
     panel.querySelector('h3').focus();
-    panel.querySelectorAll('[data-answer]').forEach(btn=>btn.onclick=()=>{
-      answers[key]=btn.dataset.answer;
+    function advance(){
       step++;
       if(step<QUESTIONS.length)renderQuestion();else showResults();
+    }
+    panel.querySelectorAll('[data-answer]').forEach(btn=>btn.onclick=()=>{
+      answers[key]=btn.dataset.answer;
+      if(key==='budget')delete answers.budgetMax;
+      advance();
+    });
+    panel.querySelector('form')?.addEventListener('submit',event=>{
+      event.preventDefault();
+      const amount=parseWineBudget(event.currentTarget.elements.maxPrice.value);
+      if(amount===null){panel.querySelector('.feature-answer').textContent='Informe um valor em reais, como 180,00.';return;}
+      answers.budget='personalizado';
+      answers.budgetMax=amount;
+      advance();
     });
     panel.querySelector('[data-sommelier="back"]')?.addEventListener('click',()=>{step--;renderQuestion();});
   }
@@ -79,17 +98,19 @@ export function openSommelier() {
       results=selection.results;
       sessionId=crypto.randomUUID();
       const recommended=results.map(({product})=>product.id);
-      log=recommended.length ? client.supa.rpc('record_sommelier_session',{p_id:sessionId,p_answers:{...answers},p_recommended:recommended}).then(()=>{},()=>{}) : Promise.resolve();
-      const companion=results.flatMap(({product})=>product.produto_combina_ids||[]).map(id=>data.products.find(p=>p.id===id)).find(p=>p&&/queijo|carne/i.test(p.category+' '+p.name)&&totalAvailability(data,p.id)>0);
+      const loggedAnswers=analyticsAnswers(answers);
+      log=recommended.length ? client.supa.rpc('record_sommelier_session',{p_id:sessionId,p_answers:loggedAnswers,p_recommended:recommended}).then(()=>{},()=>{}) : Promise.resolve();
+      const mainWine=results[0]?.product;
+      const companion=mainWine?.produto_combina_ids?.map(id=>data.products.find(p=>p.id===id)).find(p=>p&&/queijo|carne/i.test(p.category+' '+p.name)&&totalAvailability(data,p.id)>0&&wineInBudget(mainWine.price+p.price,answers));
       panel.innerHTML=`<h3 tabindex="-1">Nossa seleção para você</h3>
-       ${selection.relaxed?'<p class="feature-note">Ampliei um pouco a busca para te mostrar boas opções.</p>':''}
+       <p>${h(answerLabel('food',answers.food))} · ${h(budgetLabel(answers))}</p>
        ${results.length?'<div class="feature-wines">'+results.map(({product,availability,...hit},index)=>`<article class="feature-wine-card">${productImage(product)}<small>${['Indicação da casa','Outra opção','Seleção especial'][index]}</small><h4>${h(product.name)}</h4>
          <p>${h([product.country,product.regiao_vinho].filter(Boolean).join(' · '))}</p>
          <b>${money(product.price)}</b> ${availability<=3?'<span class="feature-note">Últimas unidades</span>':''}
          ${wineOverview(product)?`<p>${h(wineOverview(product))}</p>`:''}
          ${product.madeira?`<p><strong>Tempo em madeira</strong> · ${h(product.madeira)}</p>`:product.amadurecimento?`<p><strong>Amadurecimento</strong> · ${h(product.amadurecimento)}</p>`:''}
          <p><strong>Por que indicamos</strong> · ${h(wineReason({product,...hit},answers))}</p>
-         ${action('data-chosen',product.id,'Adicionar à sacola',true)} ${action('data-wine',product.id,'Ver detalhes')}</article>`).join('')+'</div>':'<p>Nenhum vinho com ficha e estoque confirmado atende a essa busca. Nossa equipe pode ajudar na escolha.</p>'}
+         ${action('data-chosen',product.id,'Adicionar à sacola',true)} ${action('data-wine',product.id,'Ver detalhes')}</article>`).join('')+'</div>':'<p>Nenhum vinho com estoque confirmado combina com a seleção dentro do orçamento informado. Você pode ajustar suas escolhas ou falar com a equipe.</p>'}
        ${companion?`<aside class="feature-companion"><b>Quer completar?</b> <span>${h(companion.name)} · ${money(companion.price)}</span> ${action('data-companion',companion.id,'Adicionar à sacola')}</aside>`:''}
        ${results.length?`<form class="feature-question"><label>Uma dúvida sobre a ficha<select name="wine">${results.map(({product})=>`<option value="${h(product.id)}">${h(product.name)}</option>`).join('')}</select></label>
        <label>Pergunta<input name="question" maxlength="150" required placeholder="Ex.: esse vinho é seco?"></label><button class="feature-button" type="submit">Consultar ficha</button><p role="status" class="feature-answer"></p></form>`:''}
@@ -97,10 +118,12 @@ export function openSommelier() {
       panel.querySelector('h3').focus();
       panel.querySelectorAll('[data-chosen]').forEach(btn=>btn.onclick=async()=>{
         const id=btn.dataset.chosen;
-        const {data:fresh,error}=await client.supa.rpc('catalog_profile_availability');
+        const [{data:fresh,error},current]=await Promise.all([client.supa.rpc('catalog_profile_availability'),loadWine(id)]);
         if(!dialog.open)return;
         if(error||totalAvailability(fresh||{},id)<1){client.toast('Estoque indisponível. Estamos atualizando as opções.');return showResults();}
-        void log.then(()=>client.supa.rpc('record_sommelier_session',{p_id:sessionId,p_answers:{...answers},p_recommended:recommended,p_selected:id}));
+        const quoted=results.find(({product})=>product.id===id)?.product.price;
+        if(!current||client.catalogPrice(current)!==quoted){client.toast('O catálogo mudou. Estamos atualizando preços e opções.');return showResults();}
+        void log.then(()=>client.supa.rpc('record_sommelier_session',{p_id:sessionId,p_answers:loggedAnswers,p_recommended:recommended,p_selected:id}));
         addToBag(dialog,id);
       });
       panel.querySelectorAll('[data-wine]').forEach(btn=>btn.onclick=()=>openWineDetails(btn.dataset.wine,showResults));

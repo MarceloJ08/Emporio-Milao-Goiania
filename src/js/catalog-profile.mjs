@@ -17,6 +17,14 @@ export const BUDGET = {
   qualquer:{label:'Tanto faz', min:0, max:Infinity},
 };
 export const TASTE = {leve:'Leve', encorpado:'Encorpado', seco:'Seco', suave:'Suave ou adocicado', surpresa:'Surpreenda-me'};
+export const SOMMELIER_FOOD = {
+  carne:{label:'Carne vermelha ou churrasco', group:'carne'},
+  massa_tomate:{label:'Massa com molho de tomate', group:'massa'},
+  massa_cremosa:{label:'Massa com molho cremoso', group:'massa'},
+  queijo:{label:'Queijos', group:'queijo'},
+  peixe:{label:'Peixe ou frutos do mar', group:'peixe'},
+  nenhuma:{label:'Só o vinho', group:'nenhuma'},
+};
 export const PROFILE_FIELDS = 'tipo_vinho,corpo,estilo,harmoniza_com,ocasioes,produto_combina_ids,destaque_motivo,elegivel_kit,categoria_kit,uvas,regiao_vinho,safra,produtor,acidez,taninos,teor_alcoolico,aromas,sabor_resumo,temperatura_servico,potencial_guarda,madeira,amadurecimento,perfil_cliente,descricao_curta,descricao_longa,descricao_revisada';
 
 export const profileComplete = wine => Boolean(wine.tipo_vinho && wine.corpo && wine.estilo && wine.harmoniza_com?.length && wine.ocasioes?.length);
@@ -26,33 +34,59 @@ export const money = value => Number(value).toLocaleString('pt-BR',{style:'curre
 export const safeHtml = value => String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export const hasOffensiveText = value => /\b(puta|puto|merda|caralho|porra|vadia)\b/i.test(value);
 
+export function wineInBudget(price, {budget, budgetMax}) {
+  const range = BUDGET[budget] || BUDGET.qualquer;
+  if(budget === 'personalizado')return Number.isFinite(price) && price > 0 && price <= budgetMax;
+  return Number.isFinite(price) && price > 0 && price >= range.min && price <= range.max;
+}
+
+export function parseWineBudget(input) {
+  const text=String(input).trim();
+  if(!/^(?:\d{1,7}(?:[.,]\d{1,2})?|\d{1,3}(?:\.\d{3}){1,2}(?:,\d{1,2})?)$/.test(text))return null;
+  const localized=text.includes(',')||/\.\d{3}(?:\.|$)/.test(text);
+  const budget=Number(localized?text.replaceAll('.','').replace(',','.'):text);
+  return budget>=0.01&&budget<=9999999.99?budget:null;
+}
+
+// Consulted: Vivino's guides to beef and fish, and WSET's guides to acidity and food.
+// General rules require the relevant traits on the individual wine's record.
+function foodMatch(wine, choice) {
+  if(choice === 'nenhuma')return {rank:0, reason:''};
+  const group = SOMMELIER_FOOD[choice]?.group || choice;
+  const direct = wine.harmoniza_com.includes(group);
+  const {tipo_vinho:type, corpo:body, estilo:style, acidez:acid, taninos:tannins} = wine;
+  const dry = style === 'seco';
+  const fresh = ['media','alta'].includes(acid);
+  let reason = '';
+  if(choice === 'massa_tomate' && type === 'tinto' && dry && acid === 'alta')
+    reason = 'a acidez alta do tinto acompanha a acidez do molho de tomate';
+  if(choice === 'massa_cremosa' && type === 'branco' && dry && fresh)
+    reason = 'a acidez do branco seco equilibra a cremosidade do molho';
+  if(choice === 'carne' && type === 'tinto' && dry && body !== 'leve' && ['media','alta'].includes(tannins))
+    reason = 'o corpo e os taninos do tinto acompanham a intensidade da carne vermelha';
+  if(choice === 'peixe' && !direct && dry && fresh && body === 'leve' &&
+      (type === 'branco' || (type === 'tinto' && tannins === 'baixa')))
+    reason = 'o corpo leve e a acidez combinam com peixes de sabor delicado';
+  if(choice === 'peixe' && type === 'tinto' && tannins !== 'baixa')return null;
+  if(choice.startsWith('massa_'))return reason ? {rank:direct?3:1, reason} : null;
+  if(direct)return {rank:3, reason:'harmoniza com '+FOOD[group].toLowerCase()};
+  return reason ? {rank:1, reason} : null;
+}
+
 export function recommendWines(products, catalog, answers) {
-  const range=BUDGET[answers.budget] || BUDGET.qualquer;
-  const candidates=products.filter(p=>!isAlcoholFreeWine(p)&&profileComplete(p)&&p.price>0&&totalAvailability(catalog,p.id)>0).map(product=>({
-    product,
-    occasion:product.ocasioes.includes(answers.occasion),
-    food:answers.food==='nenhuma'||product.harmoniza_com.includes(answers.food),
-    taste:answers.taste==='surpresa'||product.corpo===answers.taste||product.estilo===answers.taste||(answers.taste==='suave'&&product.estilo==='doce'),
-    availability:totalAvailability(catalog,product.id),
-    within:product.price>=range.min&&product.price<=range.max,
-  }));
-  let ranked=[];let relaxed=0;
-  for (let step=0;step<=3;step++) {
-    relaxed=step;
-    ranked=candidates.filter(({product,food,taste,within})=>(step>=1||taste)&&(step>=2||food)&&
-      (within||(step===3&&product.price>=range.min&&product.price<=range.max*1.2)));
-    if(ranked.length>=3)break;
+  const ranked = [];
+  for(const product of products){
+    if(isAlcoholFreeWine(product)||!profileComplete(product)||!wineInBudget(product.price,answers))continue;
+    const availability=totalAvailability(catalog,product.id);
+    const taste=answers.taste==='surpresa'||product.corpo===answers.taste||product.estilo===answers.taste||(answers.taste==='suave'&&product.estilo==='doce');
+    if(!availability||!taste)continue;
+    const pairing=foodMatch(product,answers.food);
+    if(!pairing)continue;
+    ranked.push({product,availability,pairing,occasion:product.ocasioes.includes(answers.occasion)});
   }
-  const score=hit=>3*Number(hit.occasion)+3*Number(hit.food&&answers.food!=='nenhuma')+
-    3*Number(hit.taste&&answers.taste!=='surpresa')+2*Number(hit.within)+Number(Boolean(hit.product.destaque_motivo));
-  ranked.sort((a,b)=>score(b)-score(a)||b.availability-a.availability||a.product.name.localeCompare(b.product.name,'pt-BR'));
-  const pool=ranked.slice(0,7);
-  const best=pool.shift();
-  if(!best)return {results:[],relaxed:false};
-  const alternate=pool.find(hit=>hit.product.price<best.product.price)||pool[0];
-  const remaining=pool.filter(hit=>hit!==alternate);
-  const special=remaining.find(hit=>hit.product.price>Math.max(best.product.price,alternate?.product.price||0))||remaining[0];
-  return {results:[best,alternate,special].filter(Boolean),relaxed:relaxed>0};
+  ranked.sort((a,b)=>b.pairing.rank-a.pairing.rank||Number(b.occasion)-Number(a.occasion)||
+    a.product.price-b.product.price||b.availability-a.availability||a.product.name.localeCompare(b.product.name,'pt-BR'));
+  return {results:ranked.slice(0,3)};
 }
 
 export function wineReason(hit, answers) {
@@ -61,8 +95,8 @@ export function wineReason(hit, answers) {
   if(p.aromas?.length)facts.push('aromas de '+p.aromas.slice(0,3).join(', '));
   const matches=[];
   if(hit.occasion)matches.push('indicado para '+OCCASION[answers.occasion].toLowerCase());
-  if(hit.food&&answers.food!=='nenhuma')matches.push('harmoniza com '+FOOD[answers.food].toLowerCase());
-  if(hit.within&&answers.budget!=='qualquer')matches.push('dentro da faixa escolhida');
+  if(hit.pairing.reason)matches.push(hit.pairing.reason);
+  if(answers.budget!=='qualquer')matches.push('dentro do orçamento');
   return facts.join(', ').replace(/^./,c=>c.toUpperCase())+(matches.length?' · '+matches.join(' · '):'')+'.';
 }
 
