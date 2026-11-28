@@ -8,6 +8,15 @@ import { printSaleReceipt } from './sale-receipt.mjs';
 import { PROFILE_FIELDS, GIFT_OCCASION } from './catalog-profile.mjs';
 import { ALCOHOL_FREE_COLLECTION, ALCOHOL_FREE_WINES, EXTRA_COLLECTIONS, isAlcoholFreeCollection, isAlcoholFreeWine, matchExtraCollection } from './catalog-collections.mjs';
 
+const favoritesKey='milao_catalog_favorites';
+let favoriteIds=readFavorites();
+function readFavorites(){
+ try{
+  const items=JSON.parse(localStorage.getItem(favoritesKey)||'[]');
+  return new Set(Array.isArray(items)?items.filter(id=>typeof id==='string'&&id):[]);
+ }catch{return new Set();}
+}
+
 function storedGiftKits(owner) {
  try { const items=JSON.parse(localStorage.getItem('milao_gift_kits_'+(owner||'guest'))||'[]'); return Array.isArray(items)?items:[]; }
  catch { return []; }
@@ -18,7 +27,7 @@ let experiences;
 async function runCatalogExperience(method,...args) {
  try {
    experiences ||= import('./catalog-experiences.mjs').then(module=>{
-     module.configureFeatures({supa,catalogPrice,add,openCart,waLink,toast,saveGiftKit:kit=>{
+     module.configureFeatures({supa,catalogPrice,add,openCart,waLink,toast,favoriteButton,saveGiftKit:kit=>{
        const existing=giftKits.findIndex(item=>item.id===kit.id);
        if(existing>=0)giftKits.splice(existing,1,kit);
        else if(giftKits.length>=5)throw Error('Limite de cinco kits por pedido.');
@@ -207,6 +216,7 @@ async function loadProducts(){
   });
   renderFilters();renderProducts();renderCountries();
   if(currentCollection)renderCollectionProducts();
+  renderFavorites();
   renderCart();
   catalogLoadedDay=day;
   return true;
@@ -402,12 +412,53 @@ function productArtHtml(product) {
 function catalogDetailsButton(product) {
  return '<a class="product-details" href="?produto='+encodeURIComponent(product.id)+'" data-wine-details="'+escapeHtml(product.id)+'">Ver detalhes</a>';
 }
+function favoriteButton(product,variant=''){
+ const selected=favoriteIds.has(product.id);
+ return '<button class="favorite-button '+variant+'" type="button" data-favorite="'+escapeHtml(product.id)+'" aria-label="Favoritar '+escapeHtml(product.name)+'" aria-pressed="'+selected+'" title="'+(selected?'Remover dos favoritos':'Favoritar produto')+'">'+storeIcon('heart')+'</button>';
+}
+function syncFavoriteButtons(id){
+ document.querySelectorAll('[data-favorite]').forEach(button=>{
+  if(id&&button.dataset.favorite!==id)return;
+  const selected=favoriteIds.has(button.dataset.favorite);
+  button.setAttribute('aria-pressed',String(selected));
+  button.title=selected?'Remover dos favoritos':'Favoritar produto';
+ });
+}
+function renderFavorites(){
+ const list=document.getElementById('cartFavoritesList');
+ const catalog=new Map(products.map(product=>[product.id,product]));
+ const saved=[...favoriteIds].reverse().map(id=>catalog.get(id)).filter(Boolean);
+ list.innerHTML=saved.map(product=>'<article class="cart-favorite-row">'+productArtHtml(product)+
+  '<div><b>'+escapeHtml(product.name)+'</b><span>'+brl(product.price)+'</span><button class="product-details" type="button" data-add-favorite="'+escapeHtml(product.id)+'">Adicionar à sacola</button></div>'+
+  favoriteButton(product)+'</article>').join('')||
+  '<p>'+ (favoriteIds.size?'Os favoritos salvos aparecerão aqui quando estiverem disponíveis no catálogo.':'Toque no coração de um produto para salvar e comprar depois.') +'</p>';
+}
 document.addEventListener('click',event=>{
+ const favorite=event.target.closest('[data-favorite]');
+ if(favorite){
+  const id=favorite.dataset.favorite;
+  const wasInList=Boolean(favorite.closest('#cartFavoritesList'));
+  if(favoriteIds.has(id))favoriteIds.delete(id);else favoriteIds.add(id);
+  try{localStorage.setItem(favoritesKey,JSON.stringify([...favoriteIds]));}catch{}
+  syncFavoriteButtons(id);
+  renderFavorites();
+  if(wasInList)document.getElementById('cartFavoritesTitle').focus();
+  toast(favoriteIds.has(id)?'Produto salvo nos favoritos.':'Produto removido dos favoritos.');
+  return;
+ }
+ const saved=event.target.closest('[data-add-favorite]');
+ if(saved&&products.some(p=>p.id===saved.dataset.addFavorite)){add(saved.dataset.addFavorite);return;}
  const details=event.target.closest('[data-wine-details]');
  if(details&&!event.defaultPrevented&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){
   event.preventDefault();
   runCatalogExperience('openWineDetails',details.dataset.wineDetails);
  }
+});
+window.addEventListener('storage',event=>{
+ if(event.key!==favoritesKey&&event.key!==null)return;
+ favoriteIds=readFavorites();
+ syncFavoriteButtons();
+ renderFavorites();
 });
 function productPriceHtml(product) {
  const previous=Number(product.oldPrice);
@@ -445,7 +496,7 @@ function isWine(product) {
 function renderProducts(){let q=document.getElementById('search').value.toLowerCase();let sort=document.getElementById('sort').value;const country=document.getElementById('catalogCountry').value;const showingPicks=!country && !q.trim() && activeCategory==='Todos';
 document.getElementById('catalogTitle').textContent=showingPicks?'Recomendados da casa':'Resultados do catálogo';
 const candidates=showingPicks?recommendedIds.map(id=>products.find(p=>p.id===id)).filter(Boolean):products;
-let list=candidates.filter(p=>(!country||p.country===country)&&(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(showingPicks && !list.length){el.textContent='Consulte o catálogo completo para explorar os rótulos disponíveis.';return;}if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
+let list=candidates.filter(p=>(!country||p.country===country)&&(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(showingPicks && !list.length){el.textContent='Consulte o catálogo completo para explorar os rótulos disponíveis.';return;}if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+favoriteButton(p,'favorite-on-card')+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
 function waLink(msg){return 'https://wa.me/'+WA+'?text='+encodeURIComponent(msg)}
 function add(id){cart[id]=(cart[id]||0)+1;saveCart();toast('Produto adicionado à sua sacola.')}
 function saveCart(sync=true){const key=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';try{localStorage.setItem(key,JSON.stringify(cart));localStorage.setItem('milao_gift_kits_'+(cartOwnerId||'guest'),JSON.stringify(giftKits));}catch(e){}document.getElementById('cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0)+giftKits.length;renderCart();if(sync&&cartOwnerId){clearTimeout(cartSaveTimer);cartSaveTimer=setTimeout(()=>persistCart(),250);}}
@@ -501,7 +552,14 @@ document.getElementById('search').addEventListener('input',renderProducts);docum
 
 let currentCollection=null;
 const blackFridaySelection = new Set(["cardapio-julia-florista-tinto","cardapio-royal-salute-21-anos-the-signature-blend","cardapio-campari-aperitivo","cardapio-bottega-pistacchio-500-ml","cardapio-kit-norton-altura-malbec-com-decanter","cardapio-kit-santa-carolina-anniversary-com-decanter","cardapio-breez-cooler-galiotto-maca-verde","cardapio-breez-cooler-galiotto-pessego","cardapio-breez-cooler-galiotto-morango"]);
-function collectionFromUrl(){const p=new URLSearchParams(location.search);if(!p.has('colecao'))return null;const category=p.get('colecao')||'Vinhos';return {category:isAlcoholFreeCollection(category)?ALCOHOL_FREE_COLLECTION:category,country:p.get('pais')||'',style:p.get('estilo')||''};}
+function collectionFromUrl(){
+ const params=new URLSearchParams(location.search);
+ if(!params.has('colecao'))return null;
+ const category=params.get('colecao')||'Vinhos';
+ const alcoholFree=isAlcoholFreeCollection(category);
+ const style=params.get('estilo')||'';
+ return {category:alcoholFree?ALCOHOL_FREE_COLLECTION:category,country:params.get('pais')||'',style:alcoholFree&&!ALCOHOL_FREE_WINES.includes(style)?'':style};
+}
 function collectionMatches(product,collection){
  const cat=(product.category||'').toLowerCase(),name=(product.name||'').toLowerCase(),desc=(product.description||'').toLowerCase(),hay=cat+' '+name+' '+desc;
  const requested=(collection.category||'').toLowerCase();
@@ -549,7 +607,7 @@ function renderCollection(){
  document.getElementById('collectionDescription').textContent=c.category==='Seleção Black Friday'?'Seleção publicada no cardápio oficial do Empório Milão.':c.country?'Explore os rótulos desta origem. Filtre por estilo, compare preços e adicione à sua sacola.':'Uma página dedicada a '+c.category.toLowerCase()+', com produtos, preços e ofertas publicados pela loja.';
  document.getElementById('collectionSearch').value='';
  const alcoholFree=isAlcoholFreeCollection(c.category);
- const styles=alcoholFree?['Todos os estilos',...ALCOHOL_FREE_WINES,'Sucos']:['Todos os estilos',...(c.country==='Portugal'?['Vinho do Porto']:[]),'Tintos','Brancos','Rosés','Espumantes','Premium'];
+ const styles=alcoholFree?['Todos os estilos',...ALCOHOL_FREE_WINES]:['Todos os estilos',...(c.country==='Portugal'?['Vinho do Porto']:[]),'Tintos','Brancos','Rosés','Espumantes','Premium'];
  document.getElementById('collectionStyles').innerHTML=(c.country||alcoholFree?styles:[]).map(s=>'<button type="button" class="collection-style '+((!c.style&&s==='Todos os estilos')||c.style===s?'active':'')+'" data-style="'+escapeHtml(s)+'">'+escapeHtml(s==='Todos os estilos'&&alcoholFree?'Todas as bebidas':s)+'</button>').join('');
  document.querySelectorAll('#collectionStyles [data-style]').forEach(b=>b.onclick=()=>openCollection({category:c.category,country:c.country,style:b.dataset.style==='Todos os estilos'?'':b.dataset.style}));
  renderCollectionProducts();
@@ -563,7 +621,7 @@ function renderCollectionProducts(){
  if(!list.length && c.category==='Promoções do dia'){el.innerHTML='<p class="collection-empty">'+(q?'Nenhuma oferta corresponde à busca.':'Nenhuma promoção publicada para hoje.')+'</p>';return;}
  if(!list.length&&q){el.innerHTML='<p class="collection-empty">Nenhum produto corresponde à busca nesta categoria.</p>';return;}
  if(!list.length){el.innerHTML='<div class="collection-empty"><div class="empty-seal">M</div><div class="eyebrow">Seleção em preparação</div><h3>Estamos preparando esta prateleira.</h3><p>Ainda não há produtos publicados nesta coleção no catálogo online. Não exibimos rótulos, preços ou descontos estimados. Fale com nossa equipe para consultar a disponibilidade atual.</p><a class="btn primary" target="_blank" href="'+waLink('Olá! Gostaria de consultar produtos e preços da coleção '+[c.category,c.country,c.style].filter(Boolean).join(' · ')+'.')+'">Consultar a equipe</a></div>';return;}
- el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'Produto selecionado pelo Empório Milão.')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add-collection="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');
+ el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+favoriteButton(p,'favorite-on-card')+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'Produto selecionado pelo Empório Milão.')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add-collection="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');
  el.querySelectorAll('[data-add-collection]').forEach(b=>b.onclick=()=>add(b.dataset.addCollection));
 }
 document.getElementById('collectionSearch').addEventListener('input',renderCollectionProducts);
@@ -1647,4 +1705,4 @@ if(epuStage&&epuBottle){
  epuStage.addEventListener('keydown',e=>{let y=parseFloat(epuBottle.dataset.ry||'0');if(e.key==='ArrowLeft')y=clamp(y-4,-17,17);else if(e.key==='ArrowRight')y=clamp(y+4,-17,17);else if(e.key==='Home')y=0;else return;e.preventDefault();epuBottle.dataset.ry=y;paint(y,parseFloat(epuBottle.dataset.rx||'0'));});
 }
 
-renderCategories();renderFilters();renderProducts();renderCountries();saveCart(false);const initialCollection=collectionFromUrl();if(initialCollection){currentCollection=initialCollection;renderCollection();}loadProducts().catch(error=>console.error('Falha ao carregar catálogo:',error));initSupabase().catch(error=>console.error('Falha na inicialização:',error));
+renderCategories();renderFilters();renderProducts();renderCountries();renderFavorites();saveCart(false);const initialCollection=collectionFromUrl();if(initialCollection){currentCollection=initialCollection;renderCollection();}loadProducts().catch(error=>console.error('Falha ao carregar catálogo:',error));initSupabase().catch(error=>console.error('Falha na inicialização:',error));

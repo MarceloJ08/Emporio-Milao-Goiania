@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg">
+  <symbol id="heart" viewBox="0 0 24 24"><path d="M20.8 4.9a5.4 5.4 0 0 0-7.6 0L12 6.1l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6l1.2 1.2 7.6 7.6 7.6-7.6 1.2-1.2a5.4 5.4 0 0 0 0-7.6Z"/></symbol>
   <symbol id="card" viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2"/><path d="M3 10h18M6 15h4"/></symbol>
   <symbol id="pin" viewBox="0 0 24 24"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></symbol>
   <symbol id="chat" viewBox="0 0 24 24"><path d="M5 4h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"/><path d="M7 9h10M7 13h6"/></symbol>

@@ -15,7 +15,7 @@ export function isAlcoholFreeWine(product) {
 
 const collections = [
   ['Mercearias', 'snack', 'Produtos de despensa', ['mercearia', 'mercearias', 'azeite', 'azeites', 'conservas', 'massas', 'molhos', 'petiscos', 'doces', 'chocolates', 'biscoitos']],
-  [ALCOHOL_FREE_COLLECTION, 'drink', 'Vinhos desalcoolizados, espumantes e sucos', ['bebidas nao alcoolicas', 'bebidas sem alcool', 'nao alcoolicos', 'suco', 'sucos', 'refrigerante', 'refrigerantes', 'agua', 'aguas', 'agua tonica', 'aguas tonicas', 'energeticos', 'chas', ...ALCOHOL_FREE_WINES.map(categoryKey)]],
+  [ALCOHOL_FREE_COLLECTION, 'drink', 'Vinhos desalcoolizados e espumantes sem álcool', ['bebidas nao alcoolicas', 'bebidas sem alcool', 'nao alcoolicos', 'refrigerante', 'refrigerantes', 'agua', 'aguas', 'agua tonica', 'aguas tonicas', 'energeticos', 'chas', ...ALCOHOL_FREE_WINES.map(categoryKey)]],
   ['Conhaque', 'bottle', 'Conhaques e cognacs', ['conhaque', 'conhaques', 'cognac', 'cognacs'], /\b(?:conhaque|cognac)\b/],
   ['Cachaça', 'bottle', 'Destilados brasileiros de cana', ['cachaca', 'cachacas'], /\bcachaca\b/],
   ['Licor', 'drink', 'Licores e cremes', ['licor', 'licores']],
