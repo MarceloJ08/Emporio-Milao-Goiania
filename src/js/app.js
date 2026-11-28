@@ -529,7 +529,11 @@ const recommendedIds = [
   'cardapio-catena-malbec',
   'cardapio-veuve-clicquot-brut-yellow-label',
   'cardapio-moet-chandon-imperial-brut',
-  'cardapio-vik-milla-cala-2022'
+  'cardapio-vik-milla-cala-2022',
+  'cardapio-solaia-antinori-2021',
+  'cardapio-castillo-ygay-gran-reserva-especial-marques-de-murrieta-2011',
+  'cardapio-pera-manca-branco-2023-1-5-l',
+  'cardapio-miraval-rose-cotes-de-provence'
 ];
 function storeDay() {
   return new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Sao_Paulo'}).format(new Date());
