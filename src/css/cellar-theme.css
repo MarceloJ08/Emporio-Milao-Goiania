@@ -131,6 +131,35 @@ header {
 .cellar-gallery .cellar-gallery-dark { object-position: 46% 57%; }
 .cellar-gallery .cellar-gallery-light { object-position: 48% 52%; }
 
+.cellar-curation {
+  padding: 0 0 clamp(30px, 4vw, 56px);
+  background: var(--paper);
+}
+.cellar-curation-layout {
+  display: grid;
+  grid-template-columns: minmax(0, .86fr) minmax(0, 1.14fr);
+  align-items: center;
+  background: #e9d9c4;
+  border: 1px solid #c9ac8b;
+}
+.cellar-curation-layout img {
+  display: block;
+  width: 100%;
+  height: clamp(220px, 23vw, 315px);
+  object-fit: cover;
+  object-position: center 46%;
+}
+.cellar-curation-layout h2 {
+  max-width: 23ch;
+  margin: 0;
+  padding: clamp(24px, 5vw, 68px);
+  box-sizing: content-box;
+  color: var(--cellar-walnut);
+  font: 400 clamp(26px, 3.15vw, 49px)/1.08 'DM Serif Display', Georgia, serif;
+  letter-spacing: -.022em;
+  text-wrap: balance;
+}
+
 .manifesto, .footer, .gift-banner, .admin-topbar, .sales-mode .admin-topbar {
   color: var(--white);
   background: var(--cellar-walnut);
@@ -216,4 +245,9 @@ header {
   .cellar-opening-inner { padding-inline: 16px; }
   .cellar-intro > p { margin: 14px 0 18px; }
   .hero.cellar-opening .cellar-actions .btn { padding-inline: 10px; }
+}
+@media (max-width: 600px) {
+  .cellar-curation-layout { grid-template-columns: minmax(0, 1fr); }
+  .cellar-curation-layout img { height: clamp(162px, 51vw, 245px); }
+  .cellar-curation-layout h2 { padding: 24px 20px 27px; }
 }

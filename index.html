@@ -57,6 +57,22 @@ if (document.documentElement.dataset.appearance === 'previous') {
 <p class="catalog-disclaimer">Os itens e preços exibidos são os dados que puderam ser conferidos no cardápio público no momento da montagem. Estoque, unidade, preço promocional e condições precisam ser confirmados com a loja. Não exibimos preço “antes” sem uma referência promocional publicada e verificável.</p>
 </div></section>
 
+<template id="cellarCurationPanel">
+  <section class="cellar-curation" aria-labelledby="cellarCurationTitle">
+    <div class="container">
+      <div class="cellar-curation-layout">
+        <img src="/src/images/rolhas-de-vinho.jpg" width="736" height="1308" loading="lazy" decoding="async" alt="Rolhas de vinho de diferentes safras e produtores">
+        <h2 id="cellarCurationTitle">Da origem à taça, escolhemos vinhos que merecem ser descobertos.</h2>
+      </div>
+    </div>
+  </section>
+</template>
+<script>
+if (document.documentElement.dataset.appearance !== 'previous') {
+  const curationPanel = document.getElementById('cellarCurationPanel');
+  curationPanel.replaceWith(curationPanel.content);
+}
+</script>
 <section class="gift-banner" aria-labelledby="giftBannerTitle"><div class="container gift-banner-inner"><div><h2 id="giftBannerTitle">Um presente escolhido por você</h2><p>Combine vinho, acompanhamentos e um cartão com a sua mensagem.</p></div><button type="button" class="feature-button feature-primary" data-catalog-feature="openGiftKit">Montar Kit Presente</button></div></section>
 <section class="discover" id="colecao"><div class="container"><div class="section-top"><div><div class="eyebrow">Explore por universo</div><h2>Seu caminho começa aqui.</h2></div><p>Uma navegação pensada para encontrar rapidamente o que combina com sua ocasião — da adega à mesa posta.</p></div><div class="category-grid" id="categoryGrid"></div></div></section>
 <section class="membership" id="membership"><div class="container member-layout"><div><div class="eyebrow">Seu Empório, do seu jeito</div><h2>Crie sua conta.<br>Monte sua própria seleção.</h2><p>Cadastre seus dados para deixar sua experiência mais prática. Sua sacola fica salva neste navegador e pode ser enviada diretamente para o WhatsApp na hora de concluir o pedido.</p><a class="btn" style="background:var(--forest);color:white" href="#catalogo">Começar a escolher</a></div><form class="member-form" id="registerForm"><div class="eyebrow">Cadastro seguro</div><h3 style="font:25px 'DM Serif Display';font-weight:500;margin:8px 0">Criar minha conta</h3><label for="fullName">Nome completo</label><input id="fullName" required minlength="2" autocomplete="name" placeholder="Como podemos chamar você?"><label for="email">E-mail</label><input id="email" type="email" required autocomplete="email" placeholder="seuemail@exemplo.com"><label for="registerPassword">Senha forte (8+ caracteres, maiúscula, número e símbolo)</label><input id="registerPassword" type="password" required minlength="8" autocomplete="new-password" placeholder="Crie uma senha segura"><button type="submit">Criar conta</button><div class="fineprint">Cadastro protegido pelo Supabase Auth. Se a confirmação de e-mail estiver ativada, você receberá uma mensagem para validar seu endereço.</div></form></div></section>
