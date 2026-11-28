@@ -5,6 +5,47 @@ import { setupSignupConfirmation, signupReturnFrom } from './signup-confirmation
 import { readAssurance, setupMfaChallenge, setupMfaSettings } from './mfa.mjs';
 import { captchaErrorMessage, requestCaptcha } from './turnstile.mjs';
 import { printSaleReceipt } from './sale-receipt.mjs';
+import { PROFILE_FIELDS, GIFT_OCCASION } from './catalog-profile.mjs';
+
+function storedGiftKits(owner) {
+ try { const items=JSON.parse(localStorage.getItem('milao_gift_kits_'+(owner||'guest'))||'[]'); return Array.isArray(items)?items:[]; }
+ catch { return []; }
+}
+let giftKits=storedGiftKits(null);
+let cartLoadSequence=0;
+let experiences;
+async function runCatalogExperience(method,...args) {
+ try {
+   experiences ||= import('./catalog-experiences.mjs').then(module=>{
+     module.configureFeatures({supa,catalogPrice,add,openCart,waLink,toast,saveGiftKit:kit=>{
+       const existing=giftKits.findIndex(item=>item.id===kit.id);
+       if(existing>=0)giftKits.splice(existing,1,kit);
+       else if(giftKits.length>=5)throw Error('Limite de cinco kits por pedido.');
+       else giftKits.push(kit);
+       saveCart();
+     }});
+     return module;
+   });
+   await (await experiences)[method](...args);
+ } catch (error) { experiences=null;toast(error.message||'Não foi possível abrir este recurso.'); }
+}
+document.addEventListener('click',event=>{
+ const opener=event.target.closest('[data-catalog-feature]');
+ if(!opener)return;
+ event.preventDefault();
+ runCatalogExperience(opener.dataset.catalogFeature);
+});
+try {
+ if(!localStorage.getItem('milao_sommelier_visto')){
+   document.querySelector('.sommelier-launch')?.classList.add('first-visit');
+   localStorage.setItem('milao_sommelier_visto','1');
+ }
+} catch {}
+const initialProductId=new URLSearchParams(location.search).get('produto');
+if(initialProductId&&!new URLSearchParams(location.search).has('admin')&&!new URLSearchParams(location.search).has('vendas')){
+ runCatalogExperience('openWineDetails',initialProductId);
+}
+
 
 const passwordFields = document.querySelectorAll(
   'input[type="password"][autocomplete="current-password"], input[type="password"][autocomplete="new-password"]',
@@ -156,10 +197,10 @@ async function readStockByStore(columns) {
  }
 }
 async function loadProducts(){
-  const {data,error}=await supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,promotion_price,description,image_url,image_alt').eq('active',true).order('name');
+  const {data,error}=await supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,promotion_price,description,image_url,image_alt,tipo_vinho,descricao_curta,categoria_kit').eq('active',true).order('name');
   if(error){console.error('Falha ao carregar produtos:',error);toast('Não foi possível atualizar o catálogo.');return false;}
   const day=storeDay();
-  products=(data||[]).map(p=>{
+  products=(data||[]).filter(p=>p.categoria_kit!=='embalagem').map(p=>{
     const price=catalogPrice(p,day);
     return {...p,price,oldPrice:price<Number(p.price)?Number(p.price):Number(p.compare_at_price)||null};
   });
@@ -173,28 +214,35 @@ document.addEventListener('visibilitychange',()=>{
  if(!document.hidden&&catalogLoadedDay&&catalogLoadedDay!==storeDay())loadProducts();
 });
 async function loadCartForUser(user){
+  const request=++cartLoadSequence;
   cartOwnerId=user?.id||null;
   const localKey=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';
   let cached={};try{cached=JSON.parse(localStorage.getItem(localKey)||'{}')||{};}catch(_){}
-  if(!user){cart=cached;saveCart(false);return;}
-  const {data,error}=await supa.from('customer_carts').select('items').eq('user_id',user.id).maybeSingle();
+  const cachedKits=storedGiftKits(cartOwnerId);
+  if(!user){cart=cached;giftKits=cachedKits;saveCart(false);return;}
+  const {data,error}=await supa.from('customer_carts').select('items,gift_kits').eq('user_id',user.id).maybeSingle();
+  if(request!==cartLoadSequence)return;
+  const guestKits=storedGiftKits(null);
+  const knownKits=Array.isArray(data?.gift_kits)?data.gift_kits:cachedKits;
+  giftKits=[...new Map([...knownKits,...guestKits].map(kit=>[kit.id,kit])).values()].slice(0,5);
   if(error){console.warn('Carrinho remoto indisponível:',error);cart=cached;saveCart(false);return;}
   if(data?.items && typeof data.items==='object'){cart=data.items;localStorage.setItem(localKey,JSON.stringify(cart));}
   else {
     cart=cached;
     const guest=(()=>{try{return JSON.parse(localStorage.getItem('milao_cart_guest')||'{}')||{};}catch(_){return {};}})();
     if(!Object.keys(cart).length && Object.keys(guest).length){cart=guest;localStorage.removeItem('milao_cart_guest');}
-    await persistCart();
   }
+  if(!data||guestKits.length){const saved=await persistCart();if(saved&&guestKits.every(kit=>giftKits.some(item=>item.id===kit.id)))localStorage.removeItem('milao_gift_kits_guest');}
   saveCart(false);
 }
 async function persistCart(){
   const key=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';
-  try{localStorage.setItem(key,JSON.stringify(cart));}catch(e){console.warn('Não foi possível salvar a sacola localmente.',e);}
+  try{localStorage.setItem(key,JSON.stringify(cart));localStorage.setItem('milao_gift_kits_'+(cartOwnerId||'guest'),JSON.stringify(giftKits));}catch(e){console.warn('Não foi possível salvar a sacola localmente.',e);}
   if(cartOwnerId){
-    const {error}=await supa.from('customer_carts').upsert({user_id:cartOwnerId,items:cart,updated_at:new Date().toISOString()},{onConflict:'user_id'});
-    if(error)console.warn('Não foi possível sincronizar a sacola:',error);
+    const {error}=await supa.from('customer_carts').upsert({user_id:cartOwnerId,items:cart,gift_kits:giftKits,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+    if(error){console.warn('Não foi possível sincronizar a sacola:',error);return false;}
   }
+  return true;
 }
 function showAdminWelcomeNotification(){
   const key='milao_admin_welcome_'+(currentUser?.id||'');
@@ -349,6 +397,16 @@ function productArtHtml(product) {
     ? '<small class="product-photo-note">A safra da foto pode variar.</small>' : '';
   return '<div class="product-art has-image"><img src="'+escapeHtml(product.image_url)+'" alt="'+escapeHtml(label)+'" loading="lazy" decoding="async" referrerpolicy="no-referrer" onerror="this.closest(\'.product-art\').classList.add(\'image-failed\');this.remove()"><span class="product-art-fallback" aria-hidden="true">'+storeIcon(productIcon(product.category))+'</span>'+vintageNote+'</div>';
 }
+function catalogDetailsButton(product) {
+ return '<a class="product-details" href="?produto='+encodeURIComponent(product.id)+'" data-wine-details="'+escapeHtml(product.id)+'">Ver detalhes</a>';
+}
+document.addEventListener('click',event=>{
+ const details=event.target.closest('[data-wine-details]');
+ if(details&&!event.defaultPrevented&&!event.ctrlKey&&!event.metaKey&&!event.shiftKey&&!event.altKey){
+  event.preventDefault();
+  runCatalogExperience('openWineDetails',details.dataset.wineDetails);
+ }
+});
 function productPriceHtml(product) {
  const previous=Number(product.oldPrice);
  const offer=previous>product.price;
@@ -385,27 +443,33 @@ function isWine(product) {
 function renderProducts(){let q=document.getElementById('search').value.toLowerCase();let sort=document.getElementById('sort').value;const country=document.getElementById('catalogCountry').value;const showingPicks=!country && !q.trim() && activeCategory==='Todos';
 document.getElementById('catalogTitle').textContent=showingPicks?'Recomendados da casa':'Resultados do catálogo';
 const candidates=showingPicks?recommendedIds.map(id=>products.find(p=>p.id===id)).filter(Boolean):products;
-let list=candidates.filter(p=>(!country||p.country===country)&&(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(showingPicks && !list.length){el.textContent='Consulte o catálogo completo para explorar os rótulos disponíveis.';return;}if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.description||'')+'</p>'+productPriceHtml(p)+'<button class="add" data-add="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
+let list=candidates.filter(p=>(!country||p.country===country)&&(activeCategory==='Todos'||p.category===activeCategory)&&(`${p.name} ${p.category} ${p.country}`.toLowerCase().includes(q)));if(sort==='low')list.sort((a,b)=>a.price-b.price);if(sort==='high')list.sort((a,b)=>b.price-a.price);if(sort==='name')list.sort((a,b)=>a.name.localeCompare(b.name));let el=document.getElementById('productGrid');if(showingPicks && !list.length){el.textContent='Consulte o catálogo completo para explorar os rótulos disponíveis.';return;}if(!list.length){el.innerHTML=`<div class="empty"><b>Essa prateleira está sendo preparada.</b><p>Consulte a equipe para receber a lista atualizada desta categoria.</p><a class="btn" style="background:var(--forest);color:white;margin-top:10px" target="_blank" href="${waLink('Olá! Gostaria de consultar os produtos e preços desta categoria: '+activeCategory+'.')}">Consultar no WhatsApp</a></div>`;return}el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');el.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add))}
 function waLink(msg){return 'https://wa.me/'+WA+'?text='+encodeURIComponent(msg)}
 function add(id){cart[id]=(cart[id]||0)+1;saveCart();toast('Produto adicionado à sua sacola.')}
-function saveCart(sync=true){const key=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';try{localStorage.setItem(key,JSON.stringify(cart));}catch(e){}document.getElementById('cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0);renderCart();if(sync&&cartOwnerId){clearTimeout(cartSaveTimer);cartSaveTimer=setTimeout(()=>persistCart(),250);}}
+function saveCart(sync=true){const key=cartOwnerId?'milao_cart_'+cartOwnerId:'milao_cart_guest';try{localStorage.setItem(key,JSON.stringify(cart));localStorage.setItem('milao_gift_kits_'+(cartOwnerId||'guest'),JSON.stringify(giftKits));}catch(e){}document.getElementById('cartCount').textContent=Object.values(cart).reduce((a,b)=>a+b,0)+giftKits.length;renderCart();if(sync&&cartOwnerId){clearTimeout(cartSaveTimer);cartSaveTimer=setTimeout(()=>persistCart(),250);}}
 function renderCart(){
  const entries=Object.entries(cart).filter(([id,n])=>n>0&&products.some(p=>p.id===id));const el=document.getElementById('cartItems');
- if(!entries.length){el.innerHTML='<div style="text-align:center;padding:50px 10px;color:#777"><div style="font-size:42px">'+storeIcon("bag")+'</div><b>Sua sacola está vazia.</b><p>Explore o catálogo e adicione seus favoritos.</p></div>';document.getElementById('cartTotal').textContent=brl(0);document.getElementById('checkoutTotal').textContent=brl(0);document.getElementById('continueCheckout').disabled=true;return;}
+ if(!entries.length&&!giftKits.length){el.innerHTML='<div style="text-align:center;padding:50px 10px;color:#777"><div style="font-size:42px">'+storeIcon("bag")+'</div><b>Sua sacola está vazia.</b><p>Explore o catálogo e adicione seus favoritos.</p></div>';document.getElementById('cartTotal').textContent=brl(0);document.getElementById('checkoutTotal').textContent=brl(0);document.getElementById('continueCheckout').disabled=true;return;}
  document.getElementById('continueCheckout').disabled=false;let total=0;
  el.innerHTML=entries.map(([id,n])=>{const p=products.find(x=>x.id===id),line=p.price*n;total+=line;const symbol=storeIcon(productIcon(p.category));const art=p.image_url?'<img src="'+escapeHtml(p.image_url)+'" alt="'+escapeHtml(p.image_alt||p.name)+'" decoding="async" referrerpolicy="no-referrer" onerror="this.parentElement.classList.add(\'image-failed\');this.remove()">'+symbol:symbol;return '<article class="cart-line"><div class="cart-product-art'+(p.image_url?' has-image':'')+'">'+art+'</div><div class="cart-product-info"><b>'+escapeHtml(p.name)+'</b><small>'+escapeHtml(p.category||'Produto')+(p.country?' · '+escapeHtml(p.country):'')+'</small><small class="cart-unit">'+brl(p.price)+' por unidade</small></div><div class="cart-line-price"><strong>'+brl(line)+'</strong><div class="qty"><button type="button" data-dec="'+escapeHtml(id)+'">−</button><span>'+n+'</span><button type="button" data-inc="'+escapeHtml(id)+'">+</button></div></div></article>';}).join('');
+ el.insertAdjacentHTML('beforeend',giftKits.map(({id,quote:k})=>{
+   total+=Number(k.price);
+   return '<article class="cart-line cart-gift"><div class="cart-product-art">'+storeIcon('bag')+'</div><div class="cart-product-info"><b>'+escapeHtml(k.title)+'</b><small>'+escapeHtml(GIFT_OCCASION[k.occasion]||'Presente')+' · '+escapeHtml(k.items.map(item=>item.name).join(', '))+'</small><small>'+escapeHtml(k.method==='pickup'?'Retirada · '+k.store_name:'Entrega · '+k.date)+'</small><button class="product-details" type="button" data-edit-gift="'+escapeHtml(id)+'">Editar kit</button></div><div class="cart-line-price"><strong>'+brl(Number(k.price))+'</strong><button class="product-details" type="button" data-remove-gift="'+escapeHtml(id)+'">Remover</button></div></article>';
+ }).join(''));
+ el.querySelectorAll('[data-edit-gift]').forEach(b=>b.onclick=()=>runCatalogExperience('openGiftKit',giftKits.find(item=>item.id===b.dataset.editGift)));
+ el.querySelectorAll('[data-remove-gift]').forEach(b=>b.onclick=()=>{giftKits=giftKits.filter(item=>item.id!==b.dataset.removeGift);saveCart();});
  document.getElementById('cartTotal').textContent=brl(total);document.getElementById('checkoutTotal').textContent=brl(total);
  el.querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>{cart[b.dataset.dec]--;if(cart[b.dataset.dec]<=0)delete cart[b.dataset.dec];saveCart();});el.querySelectorAll('[data-inc]').forEach(b=>b.onclick=()=>{cart[b.dataset.inc]++;saveCart();});
 }
-function showCartStep(step){const first=step===1;document.getElementById('cartReviewStep').hidden=!first;document.getElementById('checkoutDetailsStep').hidden=first;document.getElementById('cartProgressOne').classList.toggle('active',first);document.getElementById('cartProgressTwo').classList.toggle('active',!first);}
+function showCartStep(step){const first=step===1;document.getElementById('cartReviewStep').hidden=!first;document.getElementById('checkoutDetailsStep').hidden=first;const giftOnly=giftKits.length>0&&!Object.keys(cart).length;const addressField=document.getElementById('deliveryAddress');addressField.hidden=giftOnly;addressField.required=!giftOnly;document.querySelector('label[for="deliveryAddress"]').hidden=giftOnly;document.getElementById('cartProgressOne').classList.toggle('active',first);document.getElementById('cartProgressTwo').classList.toggle('active',!first);}
 function openCart(){document.getElementById('cartDrawer').classList.add('open');showCartStep(1);renderCart();if(catalogLoadedDay!==storeDay())loadProducts();}
 function closeCart(){document.getElementById('cartDrawer').classList.remove('open');}
 document.getElementById('openCart').onclick=openCart;document.getElementById('closeCart').onclick=closeCart;document.getElementById('closeShade').onclick=closeCart;
-document.getElementById('continueCheckout').onclick=()=>{if(!Object.values(cart).some(n=>n>0)){toast('Adicione produtos antes de continuar.');return;}if(!currentUser){toast('Entre na sua conta para concluir o pedido.');document.getElementById('accountModal').classList.add('open');return;}showCartStep(2);};
+document.getElementById('continueCheckout').onclick=()=>{if(!giftKits.length&&!Object.values(cart).some(n=>n>0)){toast('Adicione produtos antes de continuar.');return;}if(!currentUser){toast('Entre na sua conta para concluir o pedido.');document.getElementById('accountModal').classList.add('open');return;}showCartStep(2);};
 document.getElementById('backToCart').onclick=()=>showCartStep(1);
 document.getElementById('checkout').onclick=async()=>{
- const entries=Object.entries(cart).filter(([id,n])=>n>0&&products.some(p=>p.id===id));if(!entries.length){toast('Adicione produtos antes de finalizar.');showCartStep(1);return;}if(!currentUser){toast('Entre na sua conta para registrar o pedido.');document.getElementById('accountModal').classList.add('open');return;}
- const address=document.getElementById('deliveryAddress').value.trim(),payment=document.getElementById('paymentMethod').value,notes=document.getElementById('orderNotes').value.trim();if(address.length<8){toast('Informe o endereço completo para entrega.');document.getElementById('deliveryAddress').focus();return;}
+ const entries=Object.entries(cart).filter(([id,n])=>n>0&&products.some(p=>p.id===id));const kits=giftKits.map(k=>k.quote);if(!entries.length&&!kits.length){toast('Adicione produtos antes de finalizar.');showCartStep(1);return;}if(!currentUser){toast('Entre na sua conta para registrar o pedido.');document.getElementById('accountModal').classList.add('open');return;}
+ const address=entries.length?document.getElementById('deliveryAddress').value.trim():kits.map(k=>k.method==='pickup'?'Retirada em '+k.store_name:k.address).join(' | ').slice(0,300),payment=document.getElementById('paymentMethod').value,notes=document.getElementById('orderNotes').value.trim();if(address.length<8){toast('Informe o endereço completo para entrega.');document.getElementById('deliveryAddress').focus();return;}
  const name=currentProfile?.full_name||currentUser.user_metadata?.full_name||'',phone=document.getElementById('customerPhone').value.trim()||currentProfile?.phone||'';if(!name||phone.replace(/\D/g,'').length<10){toast('Informe um WhatsApp válido para contato.');document.getElementById('customerPhone').focus();return;}
  const checkoutButton=document.getElementById('checkout');
  if(checkoutButton.disabled)return;
@@ -417,10 +481,17 @@ document.getElementById('checkout').onclick=async()=>{
  if(entries.some(([id,quantity])=>cart[id]!==quantity||products.find(product=>product.id===id)?.price!==quotedPrices.get(id))){
    pendingWindow?.close();showCartStep(1);toast('A disponibilidade ou o preço mudou. Confira a sacola para continuar.');return;
  }
- await supa.from('profiles').update({phone,delivery_address:address,updated_at:new Date().toISOString()}).eq('id',buyerId);
- const {data:orderId,error}=await supa.rpc('create_order',{p_customer_name:name,p_customer_phone:phone,p_delivery_address:address,p_payment_method:payment,p_items:items,p_notes:notes||null});if(error){if(pendingWindow)pendingWindow.close();console.error(error);toast(error.message||'Não foi possível salvar o pedido.');return;}
- let total=0;const lines=entries.map(([id,n])=>{const p=products.find(x=>x.id===id);total+=p.price*n;return '• '+n+'x '+p.name+' — '+brl(p.price*n);});const msg='Olá! Fiz um pedido pelo site do Empório Milão.\nPedido: '+orderId+'\nCliente: '+name+'\nWhatsApp: '+phone+'\nEndereço: '+address+'\nPagamento: '+paymentLabels[payment]+'\nObservações: '+(notes||'Nenhuma')+'\n\nItens:\n'+lines.join('\n')+'\n\nTotal estimado: '+brl(total)+'\nPor favor, confirmem disponibilidade, entrega e valor final.';
- cart={};saveCart();closeCart();toast('Pedido registrado! Abrindo o WhatsApp.');const url=waLink(msg);if(pendingWindow)pendingWindow.location=url;else window.location.href=url;
+ await supa.from('profiles').update({phone,...(entries.length?{delivery_address:address}:{}),updated_at:new Date().toISOString()}).eq('id',buyerId);
+ const {data:orderId,error}=await supa.rpc(kits.length?'create_order_with_gift_kits':'create_order',{p_customer_name:name,p_customer_phone:phone,p_delivery_address:address,p_payment_method:payment,p_items:items,p_notes:notes||null,...(kits.length?{p_kits:kits}:{})});if(error){if(pendingWindow)pendingWindow.close();console.error(error);toast(error.message||'Não foi possível salvar o pedido.');return;}
+ let total=0;const lines=entries.map(([id,n])=>{const p=products.find(x=>x.id===id);total+=p.price*n;return '• '+n+'x '+p.name+' — '+brl(p.price*n);});
+ for(const k of kits){
+   total+=Number(k.price);
+   const heading='Kit Presente · '+(GIFT_OCCASION[k.occasion]||k.occasion)+' — '+brl(Number(k.price));
+   const delivery=k.method==='pickup'?'Retirada em '+k.store_name:'Entrega em '+k.address+' · data desejada '+k.date.split('-').reverse().join('/');
+   lines.push([heading,'Itens e embalagem: '+k.items.map(item=>item.name).join(', '),delivery,'Cartão ('+k.style+'): '+(k.message||'Sem mensagem'),k.from?'De '+k.from:'',k.to?'Para '+k.to:''].filter(Boolean).join('\n'));
+ }
+ const msg='Olá! Fiz um pedido pelo site do Empório Milão.\nPedido: '+orderId+'\nCliente: '+name+'\nWhatsApp: '+phone+'\nEndereço: '+address+'\nPagamento: '+paymentLabels[payment]+'\nObservações: '+(notes||'Nenhuma')+'\n\nItens:\n'+lines.join('\n')+'\n\nTotal estimado: '+brl(total)+'\nPor favor, confirmem disponibilidade, entrega e valor final.';
+ cart={};giftKits=[];saveCart();closeCart();toast('Pedido registrado! Abrindo o WhatsApp.');const url=waLink(msg);if(pendingWindow)pendingWindow.location=url;else window.location.href=url;
  } finally { checkoutButton.disabled=false; }
 };
 document.getElementById('catalogCountry').addEventListener('change',renderProducts);
@@ -485,7 +556,7 @@ function renderCollectionProducts(){
  const el=document.getElementById('collectionProducts');
  if(!list.length && c.category==='Promoções do dia'){el.innerHTML='<p class="collection-empty">'+(q?'Nenhuma oferta corresponde à busca.':'Nenhuma promoção publicada para hoje.')+'</p>';return;}
  if(!list.length){el.innerHTML='<div class="collection-empty"><div class="empty-seal">M</div><div class="eyebrow">Seleção em preparação</div><h3>Estamos preparando esta prateleira.</h3><p>Ainda não há produtos publicados nesta coleção no catálogo online. Não exibimos rótulos, preços ou descontos estimados. Fale com nossa equipe para consultar a disponibilidade atual.</p><a class="btn primary" target="_blank" href="'+waLink('Olá! Gostaria de consultar produtos e preços da coleção '+[c.category,c.country,c.style].filter(Boolean).join(' · ')+'.')+'">Consultar a equipe</a></div>';return;}
- el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.description||'Produto selecionado pelo Empório Milão.')+'</p>'+productPriceHtml(p)+'<button class="add" data-add-collection="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');
+ el.innerHTML=list.map(p=>'<article class="product">'+productArtHtml(p)+'<div class="product-body"><div class="product-meta">'+escapeHtml(p.country||'Empório Milão')+' · '+escapeHtml(p.category)+'</div><h3>'+escapeHtml(p.name)+'</h3><p>'+escapeHtml(p.descricao_curta||p.description||'Produto selecionado pelo Empório Milão.')+'</p>'+productPriceHtml(p)+catalogDetailsButton(p)+'<button class="add" data-add-collection="'+escapeHtml(p.id)+'">Adicionar à sacola +</button></div></article>').join('');
  el.querySelectorAll('[data-add-collection]').forEach(b=>b.onclick=()=>add(b.dataset.addCollection));
 }
 document.getElementById('collectionSearch').addEventListener('input',renderCollectionProducts);
@@ -848,12 +919,12 @@ async function renderSalesWorkspace(){
  const root=document.getElementById('adminContent');
  const [storesRes,productsRes,branchStockRes]=await Promise.all([
   supa.from('store_locations').select('id,name').eq('active',true).order('name'),
-  supa.from('products').select('id,name,category,price,promotion_day,promotion_price').eq('active',true).order('name'),
+  supa.from('products').select('id,name,category,price,promotion_day,promotion_price,categoria_kit').eq('active',true).order('name'),
   readStockByStore('store_id,product_id,quantity')
  ]);
  if(storesRes.error||productsRes.error||branchStockRes.error){root.innerHTML='<div class="admin-empty">Não foi possível carregar unidades e produtos. '+escapeHtml(storesRes.error?.message||productsRes.error?.message||branchStockRes.error?.message||'')+'</div>';return;}
  const day=storeDay();
- const stores=storesRes.data||[],itemsCatalog=(productsRes.data||[]).map(p=>({...p,price:catalogPrice(p,day)})),branchStock=branchStockRes.data||[];
+ const stores=storesRes.data||[],itemsCatalog=(productsRes.data||[]).filter(p=>p.categoria_kit!=='embalagem').map(p=>({...p,price:catalogPrice(p,day)})),branchStock=branchStockRes.data||[];
  if(!stores.length||!itemsCatalog.length){root.innerHTML='<div class="admin-empty">Cadastre unidades e produtos antes de lançar vendas.</div>';return;}
  let lines=[];
  let selectedLine = null;
@@ -1235,9 +1306,9 @@ async function loadAdminDashboard({background = false} = {}){
  if (!background) content.innerHTML='<p>Carregando dados do negócio...</p>';
  const [summary,or,pr,cr,ir,mr,storesRes,storeInvRes,storeMovesRes,staffRes]=await Promise.all([
   supa.rpc('admin_finance_summary'),
-  supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,payment_status,status,total_amount,subtotal_amount,discount_amount,sales_channel,seller_name,seller_email,store_id,created_at,store_locations(name),order_items(product_name,quantity,unit_price,list_unit_price,discount_amount,line_total)').order('created_at',{ascending:false}).limit(250),
+  supa.from('orders').select('id,customer_name,customer_phone,delivery_address,payment_method,payment_status,status,total_amount,subtotal_amount,discount_amount,sales_channel,seller_name,seller_email,store_id,created_at,gift_kits,store_locations(name),order_items(product_name,quantity,unit_price,list_unit_price,discount_amount,line_total,gift_kit_index)').order('created_at',{ascending:false}).limit(250),
   supa.from('profiles').select('id,full_name,phone,created_at').order('created_at',{ascending:false}).limit(500),
-  supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,promotion_price,description,active,image_url,image_alt').order('name'),
+  supa.from('products').select('id,name,category,country,price,compare_at_price,promotion_day,promotion_price,description,active,image_url,image_alt,'+PROFILE_FIELDS).order('name'),
   supa.from('inventory').select('product_id,quantity,updated_at'),
   supa.from('inventory_movements').select('id,product_id,movement_type,quantity,note,created_at,products(name)').order('created_at',{ascending:false}).limit(60),
   supa.from('store_locations').select('id,name,active').order('name'),
@@ -1290,7 +1361,10 @@ async function loadAdminDashboard({background = false} = {}){
   {id:'finance',label:'Faturamento detalhado',desc:'Recebimentos separados por forma de pagamento.'},
   {id:'promotions',label:'Promoções do dia',desc:'Escolha os vinhos em oferta para hoje.'},
   {id:'products',label:'Produtos e catálogo',desc:'Cadastro, preços, promoções e publicação.'},
-  {id:'customers',label:'Clientes',desc:'Consulte os clientes cadastrados.'}
+  {id:'customers',label:'Clientes',desc:'Consulte os clientes cadastrados.'},
+  {id:'profiles',label:'Fichas dos vinhos',desc:'Revise perfis, harmonizações e descrições.'},
+  {id:'sommelier',label:'Sommelier',desc:'Veja as preferências mais procuradas.'},
+  {id:'gifts',label:'Kits Presente',desc:'Gerencie embalagens, kits prontos e cartões.'}
  ];
  const areaNav=document.createElement('section');areaNav.className='admin-area-selector';
  areaNav.innerHTML='<div class="admin-area-selector-heading"><div><span>GESTÃO ORGANIZADA</span><h2>Áreas de acesso</h2><p>Selecione uma área para abrir seus controles.</p></div></div><div class="admin-area-buttons">'+adminAreaConfig.map(a=>'<button type="button" class="admin-area-button" data-open-admin-area="'+a.id+'" aria-expanded="false"><span><b>'+a.label+'</b><small>'+a.desc+'</small></span><i>'+storeIcon("arrow-out")+'</i></button>').join('')+'</div>';
@@ -1425,15 +1499,22 @@ async function loadAdminDashboard({background = false} = {}){
  };
  areaNav.querySelectorAll('[data-open-admin-area]').forEach(button=>button.onclick=()=>setAdminArea(activeAdminArea===button.dataset.openAdminArea?'':button.dataset.openAdminArea));
  setAdminArea(activeAdminArea);
+ let profileEditor;
+ const featuresAdminPromise=import('./admin-catalog-profile.mjs').then(module=>{
+   if(!content.contains(areaPanels.profiles))return;
+   profileEditor=module.mountCatalogAdmin({supa,productRows,orders,areas:areaPanels,content,toast,refresh:loadAdminDashboard,stores});
+   const selected=productRows.find(row=>row.id===document.getElementById('editProductId')?.value);
+   if(selected)profileEditor.fill(selected);
+ }).catch(()=>toast('Não foi possível abrir as áreas de fichas e kits.'));
  content.querySelectorAll('[data-order-status]').forEach(sel=>sel.onchange=async()=>{const {error}=await supa.from('orders').update({status:sel.value,updated_at:new Date().toISOString()}).eq('id',sel.dataset.orderStatus);toast(error?'Falha ao atualizar pedido.':'Andamento atualizado.');if(!error)await loadAdminDashboard();});
  content.querySelectorAll('[data-payment-status]').forEach(sel=>sel.onchange=async()=>{const v=sel.value;const {error}=await supa.from('orders').update({payment_status:v,paid_at:v==='paid'?new Date().toISOString():null,updated_at:new Date().toISOString()}).eq('id',sel.dataset.paymentStatus);toast(error?'Falha ao atualizar pagamento.':'Pagamento atualizado.');if(!error)await loadAdminDashboard();});
  document.getElementById('salesStaffForm').onsubmit=async e=>{e.preventDefault();const {error}=await supa.rpc('admin_manage_sales_staff',{p_email:document.getElementById('staffEmail').value.trim().toLowerCase(),p_full_name:document.getElementById('staffName').value.trim(),p_active:document.getElementById('staffActive').value==='true',p_max_discount_percent:3});if(error){toast('Não foi possível salvar o acesso: '+error.message);return;}toast('Permissão de vendas atualizada.');await loadAdminDashboard();};
  document.getElementById('storeStockForm').onsubmit=async e=>{e.preventDefault();const {data,error}=await supa.rpc('register_store_stock_movement',{p_store_id:document.getElementById('branchStore').value,p_product_id:document.getElementById('branchProduct').value,p_movement_type:document.getElementById('branchMovement').value,p_quantity:Number(document.getElementById('branchQuantity').value),p_note:document.getElementById('branchNote').value.trim()||null});if(error){toast('Falha ao atualizar estoque da unidade: '+error.message);return;}toast('Estoque da unidade atualizado. Saldo: '+data);await loadAdminDashboard();};
  document.getElementById('stockMovementForm').onsubmit=async e=>{e.preventDefault();const {data,error}=await supa.rpc('register_stock_movement',{p_product_id:document.getElementById('stockProduct').value,p_movement_type:document.getElementById('stockType').value,p_quantity:Number(document.getElementById('stockQuantity').value),p_note:document.getElementById('stockNote').value.trim()||null});if(error){toast('Falha no estoque: '+error.message);return;}toast('Movimentação registrada. Saldo atual: '+data);await loadAdminDashboard();};
  document.getElementById('centralizeProductImages').onclick=async()=>{const button=document.getElementById('centralizeProductImages');button.disabled=true;button.textContent='Centralizando imagens...';const {data,error}=await supa.functions.invoke('centralize-product-images');button.disabled=false;button.textContent='Centralizar fotos já cadastradas';if(error){toast('Não foi possível centralizar as fotos: '+error.message);return;}toast('Imagens centralizadas: '+Number(data?.migrated||0)+' · ignoradas: '+Number(data?.skipped||0));await loadProducts();await loadAdminDashboard();};
- document.getElementById('productForm').onsubmit=async e=>{e.preventDefault();const id=document.getElementById('editProductId').value,name=document.getElementById('pName').value.trim(),imageFile=document.getElementById('pImageFile').files[0];let imageUrl=document.getElementById('pImageUrl').value.trim()||null;const oldValue=Number(document.getElementById('pComparePrice').value)||null;const payload={name,category:document.getElementById('pCategory').value.trim(),country:document.getElementById('pCountry').value.trim()||null,price:Number(document.getElementById('pPrice').value),compare_at_price:oldValue&&oldValue>Number(document.getElementById('pPrice').value)?oldValue:null,description:document.getElementById('pDescription').value.trim(),active:true,updated_at:new Date().toISOString()};if(!name||!payload.category||!Number.isFinite(payload.price)||payload.price<=0){toast('Confira nome, categoria e preço atual.');return;}if(imageFile&&(!['image/jpeg','image/png','image/webp'].includes(imageFile.type)||imageFile.size>8*1024*1024)){toast('A imagem deve ser JPG, PNG ou WEBP e ter até 8 MB.');return;}const result=id?await supa.from('products').update(payload).eq('id',id):await supa.from('products').insert({...payload,id:slugify(name)+'-'+Date.now().toString(36)}).select('id').single();if(result.error){toast('Erro ao salvar produto: '+result.error.message);return;}const productId=id||result.data.id;if(imageFile){const ext=imageFile.type==='image/png'?'png':imageFile.type==='image/webp'?'webp':'jpg',path='products/'+productId+'.'+ext;const {error:uploadError}=await supa.storage.from('product-images').upload(path,imageFile,{upsert:true,contentType:imageFile.type,cacheControl:'31536000'});if(uploadError){toast('Produto salvo, mas falha ao centralizar a imagem: '+uploadError.message);return;}imageUrl=supa.storage.from('product-images').getPublicUrl(path).data.publicUrl;}if(imageUrl!==null){const {error:imageError}=await supa.from('products').update({image_url:imageUrl,image_alt:name,updated_at:new Date().toISOString()}).eq('id',productId);if(imageError){toast('Produto salvo, mas não foi possível atualizar a imagem: '+imageError.message);return;}}const stockResult=await supa.from('inventory').upsert({product_id:productId,quantity:0},{onConflict:'product_id',ignoreDuplicates:true});if(stockResult.error){toast('Produto salvo, mas falhou ao inicializar o estoque: '+stockResult.error.message);return;}const branchSeed=await supa.from('store_inventory').upsert(stores.map(s=>({store_id:s.id,product_id:productId,quantity:0})),{onConflict:'store_id,product_id',ignoreDuplicates:true});if(branchSeed.error){toast('Produto salvo, mas não foi possível inicializar o estoque das unidades: '+branchSeed.error.message);return;}toast('Produto e imagem salvos.');await loadProducts();await loadAdminDashboard();};
- document.getElementById('clearProduct').onclick=()=>{document.getElementById('productForm').reset();document.getElementById('editProductId').value='';document.getElementById('pImageUrl').value='';document.getElementById('pImageFile').value='';};
- content.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>{const p=productRows.find(x=>x.id===btn.dataset.edit);if(!p)return;document.getElementById('editProductId').value=p.id;document.getElementById('pName').value=p.name;const categorySelect=document.getElementById('pCategory'),countrySelect=document.getElementById('pCountry');if(p.category&&!Array.from(categorySelect.options).some(o=>o.value===p.category))categorySelect.add(new Option(p.category,p.category));if(p.country&&!Array.from(countrySelect.options).some(o=>o.value===p.country))countrySelect.add(new Option(p.country,p.country));categorySelect.value=p.category;countrySelect.value=p.country||'';document.getElementById('pPrice').value=p.price;document.getElementById('pComparePrice').value=p.compare_at_price||'';document.getElementById('pDescription').value=p.description||'';document.getElementById('pImageUrl').value=p.image_url||'';document.getElementById('pImageFile').value='';document.getElementById('productForm').scrollIntoView({behavior:'smooth',block:'center'});});
+ document.getElementById('productForm').onsubmit=async e=>{e.preventDefault();const id=document.getElementById('editProductId').value,name=document.getElementById('pName').value.trim(),imageFile=document.getElementById('pImageFile').files[0];let imageUrl=document.getElementById('pImageUrl').value.trim()||null;const oldValue=Number(document.getElementById('pComparePrice').value)||null;const payload={name,category:document.getElementById('pCategory').value.trim(),country:document.getElementById('pCountry').value.trim()||null,price:Number(document.getElementById('pPrice').value),compare_at_price:oldValue&&oldValue>Number(document.getElementById('pPrice').value)?oldValue:null,description:document.getElementById('pDescription').value.trim(),active:true,updated_at:new Date().toISOString()};await featuresAdminPromise;if(profileEditor)Object.assign(payload,profileEditor.read());if(!name||!payload.category||!Number.isFinite(payload.price)||payload.price<=0){toast('Confira nome, categoria e preço atual.');return;}if(imageFile&&(!['image/jpeg','image/png','image/webp'].includes(imageFile.type)||imageFile.size>8*1024*1024)){toast('A imagem deve ser JPG, PNG ou WEBP e ter até 8 MB.');return;}const result=id?await supa.from('products').update(payload).eq('id',id):await supa.from('products').insert({...payload,id:slugify(name)+'-'+Date.now().toString(36)}).select('id').single();if(result.error){toast('Erro ao salvar produto: '+result.error.message);return;}const productId=id||result.data.id;if(imageFile){const ext=imageFile.type==='image/png'?'png':imageFile.type==='image/webp'?'webp':'jpg',path='products/'+productId+'.'+ext;const {error:uploadError}=await supa.storage.from('product-images').upload(path,imageFile,{upsert:true,contentType:imageFile.type,cacheControl:'31536000'});if(uploadError){toast('Produto salvo, mas falha ao centralizar a imagem: '+uploadError.message);return;}imageUrl=supa.storage.from('product-images').getPublicUrl(path).data.publicUrl;}if(imageUrl!==null){const {error:imageError}=await supa.from('products').update({image_url:imageUrl,image_alt:name,updated_at:new Date().toISOString()}).eq('id',productId);if(imageError){toast('Produto salvo, mas não foi possível atualizar a imagem: '+imageError.message);return;}}const stockResult=await supa.from('inventory').upsert({product_id:productId,quantity:0},{onConflict:'product_id',ignoreDuplicates:true});if(stockResult.error){toast('Produto salvo, mas falhou ao inicializar o estoque: '+stockResult.error.message);return;}const branchSeed=await supa.from('store_inventory').upsert(stores.map(s=>({store_id:s.id,product_id:productId,quantity:0})),{onConflict:'store_id,product_id',ignoreDuplicates:true});if(branchSeed.error){toast('Produto salvo, mas não foi possível inicializar o estoque das unidades: '+branchSeed.error.message);return;}toast('Produto e imagem salvos.');await loadProducts();await loadAdminDashboard();};
+ document.getElementById('clearProduct').onclick=()=>{document.getElementById('productForm').reset();document.getElementById('editProductId').value='';document.getElementById('pImageUrl').value='';document.getElementById('pImageFile').value='';profileEditor?.fill({});};
+ content.querySelectorAll('[data-edit]').forEach(btn=>btn.onclick=()=>{const p=productRows.find(x=>x.id===btn.dataset.edit);if(!p)return;document.getElementById('editProductId').value=p.id;document.getElementById('pName').value=p.name;const categorySelect=document.getElementById('pCategory'),countrySelect=document.getElementById('pCountry');if(p.category&&!Array.from(categorySelect.options).some(o=>o.value===p.category))categorySelect.add(new Option(p.category,p.category));if(p.country&&!Array.from(countrySelect.options).some(o=>o.value===p.country))countrySelect.add(new Option(p.country,p.country));categorySelect.value=p.category;countrySelect.value=p.country||'';document.getElementById('pPrice').value=p.price;document.getElementById('pComparePrice').value=p.compare_at_price||'';document.getElementById('pDescription').value=p.description||'';document.getElementById('pImageUrl').value=p.image_url||'';document.getElementById('pImageFile').value='';profileEditor?.fill(p);document.getElementById('productForm').scrollIntoView({behavior:'smooth',block:'center'});});
  content.querySelectorAll('[data-toggle]').forEach(btn=>btn.onclick=async()=>{const {error}=await supa.from('products').update({active:btn.dataset.active!=='true',updated_at:new Date().toISOString()}).eq('id',btn.dataset.toggle);if(error){toast('Não foi possível alterar o produto.');return;}await loadProducts();await loadAdminDashboard();});
  const search=document.getElementById('adminOrderSearch'),filter=document.getElementById('adminOrderFilter');const applyFilter=()=>{const q=search.value.toLowerCase(),v=filter.value;content.querySelectorAll('.admin-order-card').forEach(card=>{const text=card.textContent.toLowerCase(),pay=card.querySelector('[data-payment-status]')?.value||'pending',cancel=card.querySelector('[data-order-status]')?.value==='cancelled';card.style.display=(!q||text.includes(q))&&(v==='all'||(v==='paid'&&pay==='paid')||(v==='pending'&&pay==='pending')||(v==='cancelled'&&cancel))?'':'none';});};search.oninput=applyFilter;filter.onchange=applyFilter;
 }

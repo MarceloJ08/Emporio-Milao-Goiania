@@ -1,0 +1,84 @@
+:root{--feature-forest:#20372d;--feature-gold:#b89a62;--feature-paper:#fbf7ef}
+.sommelier-launch{position:fixed;z-index:25;bottom:22px;left:22px;display:flex;align-items:center;gap:.6rem;padding:12px 17px;border:1px solid var(--feature-gold);border-radius:28px;background:var(--feature-forest);color:white;font:700 13px Inter,sans-serif;box-shadow:0 8px 25px #1022193e;cursor:pointer}
+.sommelier-launch svg{width:1.4rem;height:1.4rem;color:#eed5a1}
+.sommelier-launch.first-visit{animation:feature-pulse 1.35s ease-out 2}
+@keyframes feature-pulse{50%{box-shadow:0 0 0 7px #b89a6242,0 8px 25px #1022193e}}
+body.admin-mode .sommelier-launch{display:none}
+.gift-banner{padding:36px 0;background:#20372d;color:#fff9ed}
+.gift-banner-inner{display:flex;align-items:center;justify-content:space-between;gap:24px}
+.gift-banner h2{margin:0;font:clamp(28px,4vw,40px)/1.08 'DM Serif Display',Georgia,serif}
+.gift-banner p{color:#f3ead4;margin:8px 0 0}
+.gift-banner .feature-primary{background:#ead4a8;color:#20372d}
+.emporio-dialog{padding:0;width:min(850px,calc(100% - 36px));max-height:min(88dvh,820px);border:1px solid var(--feature-gold);border-radius:16px;color:#202820;background:var(--feature-paper);box-shadow:0 26px 100px #14221962}
+.emporio-dialog::backdrop{background:#172820b5}
+.emporio-dialog .feature-header{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:17px 23px;background:var(--feature-forest);color:white}
+.feature-header h2{margin:0;font:28px/1.13 'DM Serif Display',Georgia,serif}
+.feature-close{display:grid;place-items:center;width:42px;height:42px;border:1px solid #dbc798;border-radius:50%;background:transparent;color:white;font-size:24px;cursor:pointer}
+.feature-content{padding:22px}
+.feature-content h3{font:26px/1.2 'DM Serif Display',Georgia,serif;margin:10px 0 14px}
+.feature-progress{display:flex;align-items:center;gap:12px;color:#37443a;font-weight:700}
+.feature-progress progress{flex:1;height:7px;accent-color:var(--gift-accent,var(--feature-forest))}
+.feature-options{display:flex;flex-wrap:wrap;gap:9px;margin:14px 0}
+.feature-button,.product-details{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:8px 13px;border:1px solid #8f8a72;border-radius:5px;color:#20372d;background:#fffdfa;font:650 13px Inter,sans-serif;text-decoration:none;cursor:pointer}
+.feature-button[aria-pressed="true"],.gift-choice[aria-pressed="true"]{outline:2px solid var(--gift-accent,#20372d);outline-offset:-2px;background:#eee7d5}
+.feature-primary{background:#20372d;color:white;border-color:#20372d}
+.feature-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.product-details{min-height:34px;padding:5px 9px;margin:5px 0;color:#20372d;font-size:11px}
+.feature-note{color:#59451d;background:#eee4ce;border-radius:4px;padding:4px 8px;font-size:12px}
+.feature-wines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.feature-wine-card{padding:12px;background:#fffcf4;border:1px solid #ded4c3;border-radius:8px}
+.feature-wine-card h4{font:21px/1.1 'DM Serif Display',Georgia,serif;margin:6px 0}
+.feature-wine-card p{font-size:13px;margin:6px 0 10px}
+.feature-product-image{display:block;width:100%;height:142px;object-fit:contain;object-position:center;mix-blend-mode:multiply}
+.feature-companion,.feature-question{margin-top:16px;border-block-start:1px solid #d8cdb5;padding-top:12px}
+.feature-content label{display:block;margin:8px 0;font-weight:650}
+.feature-content input,.feature-content select,.feature-content textarea{display:block;width:100%;margin-top:5px;padding:8px 10px;min-height:40px;border:1px solid #a39b83;border-radius:4px;background:#fffdfa;color:#20372d;font:inherit}
+.feature-detail-grid{display:grid;grid-template-columns:minmax(120px,1fr) 2fr;align-items:start;gap:18px}
+.feature-detail-grid .feature-product-image{height:min(220px,42vw)}
+.feature-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px;margin:18px 0}
+.feature-facts div{border-bottom:1px solid #d8cdb5;padding-bottom:9px}
+.feature-facts dt{font-weight:700}.feature-facts dd{margin:4px 0 0}
+.profile-meter{display:grid;grid-template-columns:1fr minmax(70px,95px);gap:9px;align-items:center;font-size:13px;margin:7px 0}
+.profile-meter meter{width:100%}.feature-long-copy{white-space:pre-line}
+.feature-chips{display:flex;flex-wrap:wrap;gap:6px}
+.feature-chips span{display:inline-block;background:#eee4ce;border-radius:12px;padding:4px 8px}
+.gift-step{min-height:110px}.gift-error{color:#8e223a;min-height:1.2em}
+.gift-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:320px;overflow:auto;padding:3px}
+.gift-choice{display:flex;align-items:center;gap:9px;min-height:75px;background:#fffdf6;border:1px solid #d6c8ad;border-radius:6px;padding:8px;text-align:left;color:#20372d;cursor:pointer}
+.gift-choice img{width:55px;height:55px;flex:none}.gift-choice small{display:block;margin-top:4px}
+.gift-filter{max-width:260px}
+.gift-total{position:sticky;bottom:0;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px;background:#f8f0de;border-top:1px solid #af9e7b}
+.gift-total .feature-actions{margin:0}.gift-total small,.gift-total strong{display:block}
+.gift-total strong{font-size:20px;color:#20372d}
+.gift-total[aria-busy=true]{opacity:.65;pointer-events:none}
+.gift-card-preview{display:grid;gap:8px;text-align:center;margin:12px auto;padding:20px 10px;border:1px solid var(--gift-accent,#20372d);width:min(100%,490px);background:#f7efd9;color:#20372d}
+.gift-card-preview[data-style=romantico]{background:#f7e7ea}.gift-card-preview[data-style=corporativo]{background:#e7eee8}
+.gift-card-preview strong{font:26px 'DM Serif Display',Georgia,serif}.gift-card-preview p{margin:0;overflow-wrap:anywhere}
+.gift-assembly{display:flex;justify-content:center;align-items:end;min-height:90px;gap:7px;background:#f2e9d6;border-radius:8px}
+.gift-assembly img{max-width:16%;height:90px}
+.profile-editor{border:1px solid #d8cdb5;padding:12px;margin:12px 0}
+.profile-editor summary{font-weight:750;cursor:pointer}
+.profile-editor textarea{width:100%;margin-top:5px}.profile-flags{display:flex;gap:14px;flex-wrap:wrap}
+.profile-flags input,.profile-chip-groups input,#giftPresetForm input[type=checkbox]{display:inline-block;width:auto;margin:0;min-height:auto}
+.profile-chip-groups{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.profile-chip-groups fieldset{border:1px solid #d8cdb5;padding:7px}
+.profile-chip-groups label{display:flex;align-items:center;gap:4px;margin:0}
+.profile-stat{display:grid;grid-template-columns:minmax(100px,2fr) minmax(60px,1fr) auto;max-width:600px;gap:8px;align-items:center;padding:6px 0}
+.profile-stat meter{width:100%}
+#giftPresetForm input[type=checkbox]{width:auto}
+.emporio-dialog :focus-visible,.sommelier-launch:focus-visible,.product-details:focus-visible{outline:3px solid #916823!important;outline-offset:3px}
+.checkout-form [hidden]{display:none!important}
+@media(max-width:640px){
+  .sommelier-launch{left:10px;bottom:62px;padding:10px 12px;font-size:11px}
+  .sommelier-launch span:last-child{max-width:105px}
+  .gift-banner-inner{align-items:start;flex-direction:column}
+  .emporio-dialog{width:100%;max-width:100%;height:100dvh;max-height:100dvh;border:0;border-radius:0;margin:0}
+  .emporio-dialog .feature-header,.feature-content{padding:12px 14px}
+  .feature-header h2{font-size:24px}.feature-wines{grid-template-columns:1fr}
+  .feature-wine-card .feature-product-image{height:125px}
+  .feature-facts{grid-template-columns:1fr 1fr}
+  .gift-options{grid-template-columns:1fr}
+  .gift-total{flex-wrap:wrap}
+  .profile-chip-groups{grid-template-columns:1fr}
+}
+@media(prefers-reduced-motion:reduce){.sommelier-launch.first-visit{animation:none}}

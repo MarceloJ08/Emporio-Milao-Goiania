@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
+import { PROFILE_FIELDS } from '../src/js/catalog-profile.mjs';
 
 const app = readFileSync(new URL('../src/js/app.js',import.meta.url),'utf8');
 const polling = app.slice(app.indexOf('function isAdminDashboardOpen()'),app.indexOf('async function loadAdminDashboard('));
@@ -38,6 +39,7 @@ function fixture(withDashboard = false) {
     window: {addEventListener: (event,callback) => {events[event] = callback;}},
     Date:class extends Date { static now(){ return now; } },
     brl: String, escapeHtml: String,
+    PROFILE_FIELDS,
     readStockByStore: async () => ({data:[]}),
     setTimeout(callback,delay) { timers.set(++serial,{callback,time:now+delay}); return serial; },
     clearTimeout(id) { timers.delete(id); },
