@@ -15,7 +15,9 @@ export const BUDGET = {
   qualquer:{label:'Tanto faz', min:0, max:Infinity},
 };
 export const TASTE = {leve:'Leve', encorpado:'Encorpado', seco:'Seco', suave:'Suave ou adocicado', surpresa:'Surpreenda-me'};
-export const PROFILE_FIELDS = 'tipo_vinho,corpo,estilo,harmoniza_com,ocasioes,produto_combina_ids,destaque_motivo,elegivel_kit,categoria_kit,uvas,regiao_vinho,safra,produtor,acidez,taninos,teor_alcoolico,aromas,sabor_resumo,temperatura_servico,potencial_guarda,perfil_cliente,descricao_curta,descricao_longa,descricao_revisada';
+import { isAlcoholFreeWine } from './catalog-collections.mjs';
+
+export const PROFILE_FIELDS = 'tipo_vinho,corpo,estilo,harmoniza_com,ocasioes,produto_combina_ids,destaque_motivo,elegivel_kit,categoria_kit,uvas,regiao_vinho,safra,produtor,acidez,taninos,teor_alcoolico,aromas,sabor_resumo,temperatura_servico,potencial_guarda,madeira,amadurecimento,perfil_cliente,descricao_curta,descricao_longa,descricao_revisada';
 
 export const profileComplete = wine => Boolean(wine.tipo_vinho && wine.corpo && wine.estilo && wine.harmoniza_com?.length && wine.ocasioes?.length);
 export const totalAvailability = (catalog,id) => Object.values(catalog.stock?.[id] || {}).reduce((n,qty)=>n+Number(qty),0);
@@ -26,7 +28,7 @@ export const hasOffensiveText = value => /\b(puta|puto|merda|caralho|porra|vadia
 
 export function recommendWines(products, catalog, answers) {
   const range=BUDGET[answers.budget] || BUDGET.qualquer;
-  const candidates=products.filter(p=>profileComplete(p)&&p.price>0&&totalAvailability(catalog,p.id)>0).map(product=>({
+  const candidates=products.filter(p=>!isAlcoholFreeWine(p)&&profileComplete(p)&&p.price>0&&totalAvailability(catalog,p.id)>0).map(product=>({
     product,
     occasion:product.ocasioes.includes(answers.occasion),
     food:answers.food==='nenhuma'||product.harmoniza_com.includes(answers.food),

@@ -2,9 +2,20 @@ function categoryKey(value) {
   return (value || '').normalize('NFD').replace(/\p{M}/gu, '').trim().toLowerCase();
 }
 
+export const ALCOHOL_FREE_COLLECTION = 'Bebidas sem álcool';
+export const ALCOHOL_FREE_WINES = ['Vinhos desalcoolizados', 'Espumantes sem álcool'];
+
+export function isAlcoholFreeCollection(value) {
+  return ['bebidas sem alcool', 'bebidas nao alcoolicas'].includes(categoryKey(value));
+}
+
+export function isAlcoholFreeWine(product) {
+  return ALCOHOL_FREE_WINES.some(category => categoryKey(category) === categoryKey(product.category));
+}
+
 const collections = [
   ['Mercearias', 'snack', 'Produtos de despensa', ['mercearia', 'mercearias', 'azeite', 'azeites', 'conservas', 'massas', 'molhos', 'petiscos', 'doces', 'chocolates', 'biscoitos']],
-  ['Bebidas não alcoólicas', 'drink', 'Sucos, águas e refrigerantes', ['bebidas nao alcoolicas', 'bebidas sem alcool', 'nao alcoolicos', 'suco', 'sucos', 'refrigerante', 'refrigerantes', 'agua', 'aguas', 'agua tonica', 'aguas tonicas', 'energeticos', 'chas']],
+  [ALCOHOL_FREE_COLLECTION, 'drink', 'Vinhos desalcoolizados, espumantes e sucos', ['bebidas nao alcoolicas', 'bebidas sem alcool', 'nao alcoolicos', 'suco', 'sucos', 'refrigerante', 'refrigerantes', 'agua', 'aguas', 'agua tonica', 'aguas tonicas', 'energeticos', 'chas', ...ALCOHOL_FREE_WINES.map(categoryKey)]],
   ['Conhaque', 'bottle', 'Conhaques e cognacs', ['conhaque', 'conhaques', 'cognac', 'cognacs'], /\b(?:conhaque|cognac)\b/],
   ['Cachaça', 'bottle', 'Destilados brasileiros de cana', ['cachaca', 'cachacas'], /\bcachaca\b/],
   ['Licor', 'drink', 'Licores e cremes', ['licor', 'licores']],
@@ -23,7 +34,8 @@ const collectionRules = new Map(collections.map(([label, , , categories, namePat
 ]));
 
 export function matchExtraCollection(product, collection) {
-  const rule = collectionRules.get(categoryKey(collection));
+  const key = categoryKey(isAlcoholFreeCollection(collection) ? ALCOHOL_FREE_COLLECTION : collection);
+  const rule = collectionRules.get(key);
   if (!rule) return undefined;
   const category = categoryKey(product.category);
   return rule.categories.has(category) ||

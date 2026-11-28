@@ -2,12 +2,12 @@
 import {BODY,STYLE,TYPE,INTENSITY,FOOD,OCCASION,KIT_CATEGORY,GIFT_OCCASION,BUDGET,safeHtml as h,money,profileComplete,generateWineCopy,suggestWineFacts} from './catalog-profile.mjs';
 
 const selects={tipo_vinho:['Tipo',TYPE],corpo:['Corpo',BODY],estilo:['Estilo',STYLE],acidez:['Acidez',INTENSITY],taninos:['Taninos',INTENSITY],categoria_kit:['Categoria do kit',KIT_CATEGORY]};
-const texts={regiao_vinho:'Região',produtor:'Produtor',safra:'Safra',teor_alcoolico:'Teor alcoólico (%)',temperatura_servico:'Temperatura de serviço',potencial_guarda:'Potencial de guarda',destaque_motivo:'Motivo de destaque',sabor_resumo:'Sensação na boca',perfil_cliente:'Quem costuma gostar',descricao_curta:'Descrição curta'};
+const texts={regiao_vinho:'Região',produtor:'Produtor',safra:'Safra',teor_alcoolico:'Teor alcoólico (%)',temperatura_servico:'Temperatura de serviço',potencial_guarda:'Potencial de guarda',madeira:'Tempo e tipo de madeira',amadurecimento:'Outros detalhes do amadurecimento',destaque_motivo:'Motivo de destaque',sabor_resumo:'Sensação na boca',perfil_cliente:'Quem costuma gostar',descricao_curta:'Descrição curta'};
 const listInputs={uvas:'Uvas',aromas:'Aromas'};
 const chips={harmoniza_com:['Harmoniza com',FOOD],ocasioes:['Ideal para',OCCASION]};
 const parseList=value=>[...new Set(value.split(/[,\n]/).map(x=>x.trim()).filter(Boolean))].slice(0,16);
 const pickOptions=(dictionary)=>Object.entries(dictionary).map(([k,v])=>`<option value="${h(k)}">${h(v)}</option>`).join('');
-const wineKeys=['tipo_vinho','corpo','estilo','acidez','taninos','uvas','regiao_vinho','safra','produtor','teor_alcoolico','aromas','sabor_resumo','temperatura_servico','potencial_guarda','perfil_cliente','descricao_curta','descricao_longa','descricao_revisada'];
+const wineKeys=['tipo_vinho','corpo','estilo','acidez','taninos','uvas','regiao_vinho','safra','produtor','aromas','sabor_resumo','temperatura_servico','potencial_guarda','perfil_cliente'];
 const isWine=p=>p.tipo_vinho||/vinho|espumante|champagne/.test((p.category||'').toLowerCase());
 
 export function mountCatalogAdmin({supa,productRows,orders,areas,content,toast,refresh,stores}){
