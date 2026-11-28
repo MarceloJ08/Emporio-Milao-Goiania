@@ -110,3 +110,4 @@ body.admin-mode .sommelier-launch{display:none}
   .cart-favorite-row{grid-template-columns:48px minmax(0,1fr) 44px;gap:8px}
   .cart-favorite-row .product-art{width:48px}
 }
+.feature-facts.wine-production{grid-template-columns:minmax(0,1fr)}

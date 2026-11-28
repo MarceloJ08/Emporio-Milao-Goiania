@@ -13,6 +13,33 @@ export function isAlcoholFreeWine(product) {
   return ALCOHOL_FREE_WINES.some(category => categoryKey(category) === categoryKey(product.category));
 }
 
+const wineCategories = {
+  tintos:'tinto', 'vinhos tintos':'tinto',
+  brancos:'branco', 'vinhos brancos':'branco',
+  roses:'rose', 'vinhos roses':'rose',
+  espumantes:'espumante', champagne:'champagne', champagnes:'champagne',
+  'vinho do porto':'porto',
+};
+export const PREMIUM_WINE_PRICE = 400;
+
+export function catalogWineType(product) {
+  if(isAlcoholFreeWine(product))return '';
+  const category=categoryKey(product.category);
+  return Object.hasOwn(wineCategories,category) ? wineCategories[category] : product.tipo_vinho || '';
+}
+
+export function matchWineCollection(product, collection) {
+  const key=categoryKey(collection);
+  const type=catalogWineType(product);
+  if(key==='vinhos')return Boolean(type);
+  if(key==='premium'||key==='vinhos premium'){
+    const regularPrice=Number(product.regularPrice ?? product.price);
+    return Boolean(type && (categoryKey(product.category)==='vinhos premium'||regularPrice>=PREMIUM_WINE_PRICE));
+  }
+  if(key==='espumantes')return type==='espumante'||type==='champagne';
+  return Object.hasOwn(wineCategories,key)?type===wineCategories[key]:undefined;
+}
+
 const collections = [
   ['Mercearias', 'snack', 'Produtos de despensa', ['mercearia', 'mercearias', 'azeite', 'azeites', 'conservas', 'massas', 'molhos', 'petiscos', 'doces', 'chocolates', 'biscoitos']],
   [ALCOHOL_FREE_COLLECTION, 'drink', 'Vinhos desalcoolizados e espumantes sem álcool', ['bebidas nao alcoolicas', 'bebidas sem alcool', 'nao alcoolicos', 'refrigerante', 'refrigerantes', 'agua', 'aguas', 'agua tonica', 'aguas tonicas', 'energeticos', 'chas', ...ALCOHOL_FREE_WINES.map(categoryKey)]],

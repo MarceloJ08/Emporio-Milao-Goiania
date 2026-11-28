@@ -1,5 +1,6 @@
 
 import {BODY,STYLE,TYPE,INTENSITY,FOOD,OCCASION,KIT_CATEGORY,GIFT_OCCASION,CARD_STYLE,BUDGET,TASTE,PROFILE_FIELDS,SOMMELIER_FOOD,eligibleStores,totalAvailability,recommendWines,wineInBudget,parseWineBudget,wineReason,wineOverview,money,safeHtml as h,hasOffensiveText} from './catalog-profile.mjs';
+import {catalogWineType} from './catalog-collections.mjs';
 
 let client;
 let pageDialog;
@@ -204,9 +205,19 @@ async function showNestedDetails(id){
 }
 function renderDetails(panel,p){
   const stages={leve:1,medio:3,encorpado:5,baixa:1,media:3,alta:5,seco:1,suave:3,doce:5};
-  const attributes=[detailPair('Tipo',TYPE[p.tipo_vinho]),detailPair('Uvas',p.uvas?.join(', ')),detailPair('Origem',[p.country,p.regiao_vinho].filter(Boolean).join(' · ')),detailPair('Safra',p.safra),detailPair('Produtor',p.produtor),detailPair('Teor alcoólico',p.teor_alcoolico!=null?p.teor_alcoolico+'%':''),detailPair('Temperatura de serviço',p.temperatura_servico),detailPair('Tempo em madeira',p.madeira),detailPair('Amadurecimento',p.amadurecimento),detailPair('Guarda',p.potencial_guarda),detailPair('Ideal para',listLabels(p.ocasioes,OCCASION)),detailPair('Harmonização',listLabels(p.harmoniza_com,FOOD))].join('');
+  const wine=Boolean(catalogWineType(p)||p.tipo_vinho);
+  const production=wine?[
+    detailPair('Uvas',p.uvas?.join(', ')||'Castas não informadas'),
+    detailPair('Tempo em madeira',p.madeira),
+    detailPair('Amadurecimento',p.amadurecimento||(!p.madeira?'Estágio e recipiente não informados.':'')),
+    detailPair('Vinificação',p.vinificacao),
+  ].join(''):'';
+  const source=/^https:\/\/[^\s]+$/i.test(p.fonte_ficha||'')?p.fonte_ficha:'';
+  const attributes=[detailPair('Tipo',TYPE[p.tipo_vinho]),detailPair('Origem',[p.country,p.regiao_vinho].filter(Boolean).join(' · ')),detailPair('Safra',p.safra),detailPair('Produtor',p.produtor),detailPair('Teor alcoólico',p.teor_alcoolico!=null?p.teor_alcoolico+'%':''),detailPair('Temperatura de serviço',p.temperatura_servico),detailPair('Guarda',p.potencial_guarda),detailPair('Ideal para',listLabels(p.ocasioes,OCCASION)),detailPair('Harmonização',listLabels(p.harmoniza_com,FOOD))].join('');
   const meters=detailMeter('Corpo',BODY[p.corpo],stages[p.corpo])+detailMeter('Acidez',INTENSITY[p.acidez],stages[p.acidez])+detailMeter('Taninos',INTENSITY[p.taninos],stages[p.taninos])+detailMeter('Doçura',STYLE[p.estilo],stages[p.estilo]);
   panel.innerHTML=`<div class="feature-detail-grid"><div>${productImage(p)}</div><div><p>${h((p.descricao_longa&&(p.descricao_curta===p.description||p.descricao_curta===p.descricao_longa))?'':p.descricao_curta||(!p.descricao_longa?p.description:''))}</p><p><strong>${money(client.catalogPrice(p))}</strong></p><div class="feature-actions">${action('data-detail-add',p.id,'Adicionar à sacola',true)}${client.favoriteButton(p)}</div>${meters}</div></div>
+    ${production?`<dl class="feature-facts wine-production">${production}</dl>`:''}
+    ${source?`<p><a href="${h(source)}" target="_blank" rel="noopener noreferrer">Consultar ficha técnica do produtor</a></p>`:''}
     ${attributes?`<dl class="feature-facts">${attributes}</dl>`:''}${p.aromas?.length?`<h3>Aromas</h3><p class="feature-chips">${p.aromas.map(a=>`<span>${h(a)}</span>`).join('')}</p>`:''}
     ${p.descricao_longa?`<h3>Sobre o produto</h3><p class="feature-long-copy">${h(p.descricao_longa)}</p>`:''}${p.sabor_resumo&&!p.descricao_longa?.includes(p.sabor_resumo)?`<p>${h(p.sabor_resumo)}</p>`:''}`;
 }

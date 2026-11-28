@@ -3,7 +3,7 @@ import {BODY,STYLE,TYPE,INTENSITY,FOOD,OCCASION,KIT_CATEGORY,GIFT_OCCASION,BUDGE
 import {canCompleteGift,giftProducts} from './gift-experience.mjs';
 
 const selects={tipo_vinho:['Tipo',TYPE],corpo:['Corpo',BODY],estilo:['Estilo',STYLE],acidez:['Acidez',INTENSITY],taninos:['Taninos',INTENSITY],categoria_kit:['Categoria do kit',KIT_CATEGORY]};
-const texts={regiao_vinho:'Região',produtor:'Produtor',safra:'Safra',teor_alcoolico:'Teor alcoólico (%)',temperatura_servico:'Temperatura de serviço',potencial_guarda:'Potencial de guarda',madeira:'Tempo e tipo de madeira',amadurecimento:'Outros detalhes do amadurecimento',destaque_motivo:'Motivo de destaque',sabor_resumo:'Sensação na boca',perfil_cliente:'Quem costuma gostar',descricao_curta:'Descrição curta'};
+const texts={regiao_vinho:'Região',produtor:'Produtor',safra:'Safra',teor_alcoolico:'Teor alcoólico (%)',temperatura_servico:'Temperatura de serviço',potencial_guarda:'Potencial de guarda',madeira:'Tempo em madeira e tipo de barril',amadurecimento:'Outros estágios de maturação',vinificacao:'Vinificação (quando distinta da maturação)',fonte_ficha:'URL HTTPS da ficha técnica',destaque_motivo:'Motivo de destaque',sabor_resumo:'Sensação na boca',perfil_cliente:'Quem costuma gostar',descricao_curta:'Descrição curta'};
 const listInputs={uvas:'Uvas',aromas:'Aromas'};
 const chips={harmoniza_com:['Harmoniza com',FOOD],ocasioes:['Ideal para',OCCASION]};
 const parseList=value=>[...new Set(value.split(/[,\n]/).map(x=>x.trim()).filter(Boolean))].slice(0,16);
@@ -17,7 +17,7 @@ export function mountCatalogAdmin({supa,productRows,orders,areas,content,toast,r
   fields.className='profile-editor';
   fields.innerHTML=`<summary>Ficha, harmonização e Kit Presente</summary><p>Preencha a ficha para o vinho aparecer no Sommelier quando houver estoque.</p>
     <div class="admin-form-grid">${Object.entries(selects).map(([key,[label,values]])=>`<label>${label}<select data-profile="${key}"><option value="">Selecione</option>${pickOptions(values)}</select></label>`).join('')}
-    ${Object.entries(texts).map(([key,label])=>`<label>${label}<input data-profile="${key}" ${key==='safra'?'type="number" min="1800" max="2100"':key==='teor_alcoolico'?'type="number" min="0" max="99.9" step=".1"':'maxlength="'+(key==='descricao_curta'?140:key==='destaque_motivo'?180:220)+'"'}></label>`).join('')}
+    ${Object.entries(texts).map(([key,label])=>`<label>${label}<input data-profile="${key}" ${key==='safra'?'type="number" min="1800" max="2100"':key==='teor_alcoolico'?'type="number" min="0" max="99.9" step=".1"':key==='fonte_ficha'?'type="url" pattern="https://[^\\s]+" maxlength="500"':'maxlength="'+(key==='descricao_curta'?140:key==='destaque_motivo'?180:220)+'"'}></label>`).join('')}
     ${Object.entries(listInputs).map(([key,label])=>`<label>${label}<input data-profile="${key}" maxlength="250" placeholder="Separe por vírgulas"></label>`).join('')}</div>
     <div class="profile-chip-groups">${Object.entries(chips).map(([name,[label,dict]])=>`<fieldset><legend>${label}</legend><div class="feature-chips">${Object.entries(dict).map(([key,text])=>`<label><input type="checkbox" data-profile-chip="${name}" value="${key}"><span>${text}</span></label>`).join('')}</div></fieldset>`).join('')}</div>
     <label>Buscar produtos que combinam<input type="search" data-profile-pair-search></label><label>Produtos que combinam<select multiple size="5" data-profile-pairs></select></label>

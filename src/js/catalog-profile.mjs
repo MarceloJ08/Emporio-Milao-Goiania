@@ -25,7 +25,7 @@ export const SOMMELIER_FOOD = {
   peixe:{label:'Peixe ou frutos do mar', group:'peixe'},
   nenhuma:{label:'Só o vinho', group:'nenhuma'},
 };
-export const PROFILE_FIELDS = 'tipo_vinho,corpo,estilo,harmoniza_com,ocasioes,produto_combina_ids,destaque_motivo,elegivel_kit,categoria_kit,uvas,regiao_vinho,safra,produtor,acidez,taninos,teor_alcoolico,aromas,sabor_resumo,temperatura_servico,potencial_guarda,madeira,amadurecimento,perfil_cliente,descricao_curta,descricao_longa,descricao_revisada';
+export const PROFILE_FIELDS = 'tipo_vinho,corpo,estilo,harmoniza_com,ocasioes,produto_combina_ids,destaque_motivo,elegivel_kit,categoria_kit,uvas,regiao_vinho,safra,produtor,acidez,taninos,teor_alcoolico,aromas,sabor_resumo,temperatura_servico,potencial_guarda,madeira,amadurecimento,vinificacao,fonte_ficha,perfil_cliente,descricao_curta,descricao_longa,descricao_revisada';
 
 export const profileComplete = wine => Boolean(wine.tipo_vinho && wine.corpo && wine.estilo && wine.harmoniza_com?.length && wine.ocasioes?.length);
 export const totalAvailability = (catalog,id) => Object.values(catalog.stock?.[id] || {}).reduce((n,qty)=>n+Number(qty),0);

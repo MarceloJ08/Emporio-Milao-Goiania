@@ -6,7 +6,7 @@ import { readAssurance, setupMfaChallenge, setupMfaSettings } from './mfa.mjs';
 import { captchaErrorMessage, requestCaptcha } from './turnstile.mjs';
 import { printSaleReceipt } from './sale-receipt.mjs';
 import { PROFILE_FIELDS, GIFT_OCCASION } from './catalog-profile.mjs';
-import { ALCOHOL_FREE_COLLECTION, ALCOHOL_FREE_WINES, EXTRA_COLLECTIONS, isAlcoholFreeCollection, isAlcoholFreeWine, matchExtraCollection } from './catalog-collections.mjs';
+import { ALCOHOL_FREE_COLLECTION, ALCOHOL_FREE_WINES, EXTRA_COLLECTIONS, PREMIUM_WINE_PRICE, catalogWineType, isAlcoholFreeCollection, matchExtraCollection, matchWineCollection } from './catalog-collections.mjs';
 
 const favoritesKey='milao_catalog_favorites';
 let favoriteIds=readFavorites();
@@ -212,7 +212,7 @@ async function loadProducts(){
   const day=storeDay();
   products=(data||[]).filter(p=>p.categoria_kit!=='embalagem').map(p=>{
     const price=catalogPrice(p,day);
-    return {...p,price,oldPrice:price<Number(p.price)?Number(p.price):Number(p.compare_at_price)||null};
+    return {...p,price,regularPrice:Number(p.price),oldPrice:price<Number(p.price)?Number(p.price):Number(p.compare_at_price)||null};
   });
   renderFilters();renderProducts();renderCountries();
   if(currentCollection)renderCollectionProducts();
@@ -491,7 +491,7 @@ function storeDay() {
   return new Intl.DateTimeFormat('sv-SE', {timeZone:'America/Sao_Paulo'}).format(new Date());
 }
 function isWine(product) {
-  return !isAlcoholFreeWine(product) && /vinho|tinto|branco|rosé|champagne|espumante/i.test(product.category);
+  return Boolean(catalogWineType(product));
 }
 function renderProducts(){let q=document.getElementById('search').value.toLowerCase();let sort=document.getElementById('sort').value;const country=document.getElementById('catalogCountry').value;const showingPicks=!country && !q.trim() && activeCategory==='Todos';
 document.getElementById('catalogTitle').textContent=showingPicks?'Recomendados da casa':'Resultados do catálogo';
@@ -561,28 +561,20 @@ function collectionFromUrl(){
  return {category:alcoholFree?ALCOHOL_FREE_COLLECTION:category,country:params.get('pais')||'',style:alcoholFree&&!ALCOHOL_FREE_WINES.includes(style)?'':style};
 }
 function collectionMatches(product,collection){
- const cat=(product.category||'').toLowerCase(),name=(product.name||'').toLowerCase(),desc=(product.description||'').toLowerCase(),hay=cat+' '+name+' '+desc;
- const requested=(collection.category||'').toLowerCase();
+ const cat=(product.category||'').toLowerCase();
+ const requested=collection.category.toLowerCase();
  if(requested==='seleção black friday')return blackFridaySelection.has(product.id);
  if(requested==='ofertas')return Number(product.oldPrice)>Number(product.price);
  if(requested==='promoções do dia')return isWine(product) && product.promotion_day===storeDay() && Number(product.oldPrice)>Number(product.price);
- if(requested==='vinhos' && !isWine(product))return false;
- let categoryMatch=requested==='todos'||cat===requested||hay.includes(requested);
- if(requested==='destilados')categoryMatch=['destilados','whiskys','licores','aperitivos'].includes(cat)||categoryMatch;
- if(requested==='espumantes')categoryMatch=cat==='champagnes'||categoryMatch;
- if(requested==='vinhos')categoryMatch=categoryMatch||/vinho|tinto|branco|ros[eé]|espumante|champagne/.test(hay);
- if(requested==='vinho do porto')categoryMatch=cat==='vinho do porto'||(/portugal/.test((product.country||'').toLowerCase())&&/porto|ruby|lbv|vintage|tawny|colheita|crusted|late bottled/.test(hay));
- if(requested==='tintos')categoryMatch=/tinto|tintos/.test(hay);
- if(requested==='brancos')categoryMatch=/branco|brancos/.test(hay);
- if(requested==='rosés')categoryMatch=/ros[eé]/.test(hay);
- if(requested==='vinhos premium')categoryMatch=/premium|reserva|gran reserva|especial/.test(hay);
- if(requested==='tintos')categoryMatch=/tinto|tintos/.test(hay)&&!(/porto|ruby|lbv|vintage|tawny|colheita/.test(hay));
- categoryMatch=matchExtraCollection(product,collection.category)??categoryMatch;
  if(collection.country&&(product.country||'').toLowerCase()!==collection.country.toLowerCase())return false;
+ const extraMatch=matchExtraCollection(product,collection.category);
+ const wineMatch=matchWineCollection(product,collection.category);
+ const legacyMatch=requested==='todos'||cat===requested||
+  (requested==='destilados'&&['whiskys','licores','aperitivos','conhaque','cachaça','tequilas','gins'].includes(cat))||
+  [product.name,product.description].some(value=>value?.toLowerCase().includes(requested));
+ const categoryMatch=extraMatch??wineMatch??legacyMatch;
  if(isAlcoholFreeCollection(collection.category))return categoryMatch&&(!collection.style||product.category===collection.style);
- if(isAlcoholFreeWine(product)&&['espumantes','tintos','brancos','rosés','vinhos premium'].includes(requested))return false;
- if(collection.style){const style=collection.style.toLowerCase();if(style==='vinho do porto'&&!(cat==='vinho do porto'||(/portugal/.test((product.country||'').toLowerCase())&&/porto|ruby|lbv|vintage|tawny|colheita|crusted|late bottled/.test(hay))))return false;if(style==='tintos'&&(!/tinto|tintos/.test(hay)||/porto|ruby|lbv|vintage|tawny|colheita/.test(hay)))return false;if(style==='brancos'&&!/branco|brancos/.test(hay))return false;if(style==='rosés'&&!/ros[eé]/.test(hay))return false;if(style==='espumantes'&&!/espumante|champagne|prosecco|cava/.test(hay))return false;if(style==='premium'&&!/premium|reserva|gran reserva|especial/.test(hay))return false;}
- return categoryMatch;
+ return categoryMatch&&(!collection.style||(matchWineCollection(product,collection.style)??true));
 }
 function openCollection(collection){
  currentCollection={category:collection.category||'Vinhos',country:collection.country||'',style:collection.style||''};
@@ -604,7 +596,7 @@ function renderCollection(){
  document.getElementById('collectionCrumbs').textContent=parts.join(' / ');
  document.getElementById('collectionEyebrow').textContent=c.country?'Atlas de vinhos · '+c.country:'Coleção Empório Milão';
  document.getElementById('collectionTitle').textContent=title;
- document.getElementById('collectionDescription').textContent=c.category==='Seleção Black Friday'?'Seleção publicada no cardápio oficial do Empório Milão.':c.country?'Explore os rótulos desta origem. Filtre por estilo, compare preços e adicione à sua sacola.':'Uma página dedicada a '+c.category.toLowerCase()+', com produtos, preços e ofertas publicados pela loja.';
+ document.getElementById('collectionDescription').textContent=c.category==='Vinhos premium'?'Vinhos selecionados com preço de tabela a partir de '+brl(PREMIUM_WINE_PRICE)+' e rótulos premium do catálogo.':c.category==='Seleção Black Friday'?'Seleção publicada no cardápio oficial do Empório Milão.':c.country?'Explore os rótulos desta origem. Filtre por estilo, compare preços e adicione à sua sacola.':'Uma página dedicada a '+c.category.toLowerCase()+', com produtos, preços e ofertas publicados pela loja.';
  document.getElementById('collectionSearch').value='';
  const alcoholFree=isAlcoholFreeCollection(c.category);
  const styles=alcoholFree?['Todos os estilos',...ALCOHOL_FREE_WINES]:['Todos os estilos',...(c.country==='Portugal'?['Vinho do Porto']:[]),'Tintos','Brancos','Rosés','Espumantes','Premium'];
