@@ -1,4 +1,10 @@
 {
+  "rewrites": [
+    {
+      "source": "/visual-anterior",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

@@ -6,13 +6,19 @@
 <title>Empório Milão Prime | Curadoria em Goiânia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/src/css/styles.css"><link rel="stylesheet" href="/src/css/premium.css"><link rel="stylesheet" href="/src/css/brand-refresh.css"><link rel="stylesheet" href="/src/css/catalog-experiences.css"><link rel="stylesheet" href="/src/css/cellar-theme.css">
+<link rel="stylesheet" href="/src/css/styles.css"><link rel="stylesheet" href="/src/css/premium.css"><link rel="stylesheet" href="/src/css/brand-refresh.css"><link rel="stylesheet" href="/src/css/catalog-experiences.css"><link rel="stylesheet" href="/src/css/cellar-theme.css" id="cellarTheme">
+<script>
+if (/^\/visual-anterior\/?$/.test(location.pathname)) {
+  document.documentElement.dataset.appearance = 'previous';
+  document.getElementById('cellarTheme').media = 'not all';
+}
+</script>
 </head>
 <body>
 <div class="announcement" id="announcementBar">EMPÓRIO MILÃO <span>·</span> UMA SELEÇÃO À ALTURA DOS SEUS MOMENTOS</div>
 <header><div class="nav">
 <a class="logo emporio-brand-link" href="#top" aria-label="Empório Milão — início"><img class="emporio-brand-image" src="/src/images/emporio-milao-nova-suica.webp" width="1000" height="314" alt=""></a>
-<nav class="links" id="siteLinks"><a href="/?colecao=Promoções%20do%20dia">Promoções do dia</a><a href="/?colecao=Seleção%20Black%20Friday">Black Friday</a><a href="#catalogo">Nossa seleção</a><a href="#kit-presente" data-catalog-feature="openGiftKit">Kit Presente</a><a href="#origens">Por país</a><a href="#unidades">Nossas unidades</a></nav>
+<nav class="links" id="siteLinks"><a href="?colecao=Promoções%20do%20dia">Promoções do dia</a><a href="?colecao=Seleção%20Black%20Friday">Black Friday</a><a href="#catalogo">Nossa seleção</a><a href="#kit-presente" data-catalog-feature="openGiftKit">Kit Presente</a><a href="#origens">Por país</a><a href="#unidades">Nossas unidades</a></nav>
 <button class="mobile-menu-toggle" id="mobileMenuToggle" type="button" aria-expanded="false" aria-controls="siteLinks">Menu</button>
 <div class="navright"><button class="iconbtn" id="accountBtn" aria-label="Entrar ou cadastrar">Login</button><button class="cartbtn" id="openCart">Sacola <span class="count" id="cartCount">0</span></button></div>
 </div></header>
@@ -35,9 +41,17 @@
     </figure>
   </div>
 </section>
+<template id="previousHomeHero">
+<section class="hero"><div class="hero-photo" role="img" aria-label="Adega com garrafas de vinho em ambiente sofisticado"></div><div class="hero-shade"></div><div class="hero-inner"><div class="hero-copy"><div class="kicker"><span class="kicker-dot"></span> GOIÂNIA · EMPÓRIO MILÃO PRIME</div><p class="hero-overline">O extraordinário mora nos detalhes.</p><h1>Uma boa escolha.<br><i>Um grande momento.</i></h1><p>Vinhos, destilados, carnes especiais e sabores selecionados para transformar encontros em experiências memoráveis.</p><div class="hero-actions"><a class="btn primary" href="#catalogo">Explore nossa seleção <span aria-hidden="true"><svg class="store-icon" aria-hidden="true" focusable="false"><use href="/src/icons.svg#arrow-out"></use></svg></span></a><a class="btn ghost" href="https://wa.me/556236367239?text=Ol%C3%A1%2C%20gostaria%20de%20receber%20uma%20indica%C3%A7%C3%A3o%20do%20Emp%C3%B3rio%20Mil%C3%A3o." target="_blank" rel="noopener">Fale com um especialista</a></div><div class="hero-proof"><span>CURADORIA & VARIEDADE</span><span class="proof-line"></span><span>DESDE GOIÂNIA, PARA VOCÊ</span></div></div><div class="hero-showcase" aria-label="Barca Velha 2004 em destaque"><div class="showcase-topline"><span>SELEÇÃO MILÃO</span><span>DOURO · PORTUGAL</span></div><div class="showcase-glow"></div><div class="showcase-orbit orbit-one"></div><div class="showcase-orbit orbit-two"></div><div class="bottle-stage"><div class="bottle-shadow"></div><img class="epu-bottle barca-photo" src="/src/images/barca-velha-2004.jpg" width="736" height="981" fetchpriority="high" alt="Garrafa de Barca Velha Douro 2004, da Casa Ferreirinha"></div><div class="showcase-index">RÓTULO <span>01</span></div><div class="showcase-info"><div><small>EDIÇÃO DE DESTAQUE</small><h2>Barca Velha <span>2004</span></h2><p>Uma expressão clássica do Douro.</p></div><a href="#catalogo" aria-label="Explore os vinhos">↗</a></div><div class="showcase-bottom"><span>PORTUGAL</span><span>RARIDADE · CURADORIA</span></div></div><aside class="hero-editorial"><span class="editorial-number">01 / 03</span><div class="editorial-rule"></div><span class="editorial-caption">A ARTE DE RECEBER BEM</span><h2>Mais que produtos.<br><em>Uma forma de celebrar.</em></h2><p>Descubra rótulos, sabores e escolhas que combinam com a sua ocasião.</p><a href="#colecao" aria-label="Descubra as experiências">DESCUBRA <span><svg class="store-icon" aria-hidden="true" focusable="false"><use href="/src/icons.svg#arrow-out"></use></svg></span></a></aside></div><div class="hero-bottomline"><span>EMPÓRIO MILÃO PRIME</span><span>VINHOS · GOURMET · EXPERIÊNCIAS</span><span>GOIÂNIA / GO</span></div></section>
+</template>
+<script>
+if (document.documentElement.dataset.appearance === 'previous') {
+  document.querySelector('.cellar-opening').replaceWith(document.getElementById('previousHomeHero').content.cloneNode(true));
+}
+</script>
 <div class="manifesto"><div class="manifesto-inner"><div class="manifesto-item"><span class="num">01</span><div><b>Seleção especial</b><small>Produtos escolhidos para surpreender</small></div></div><div class="manifesto-item"><span class="num">02</span><div><b>Condições especiais</b><small>Ofertas transparentes e atualizadas</small></div></div><div class="manifesto-item"><span class="num">03</span><div><b>Atendimento próximo</b><small>Compra online com suporte humano</small></div></div></div></div>
 
-<section class="catalog" id="catalogo"><div class="container"><div class="section-top"><div><div class="eyebrow">Seleção da adega</div><h2 id="catalogTitle">Recomendados da casa</h2></div><p><a href="/?colecao=Ofertas">Ver ofertas</a> · <a href="/?colecao=Todos">Ver catálogo completo</a></p></div>
+<section class="catalog" id="catalogo"><div class="container"><div class="section-top"><div><div class="eyebrow">Seleção da adega</div><h2 id="catalogTitle">Recomendados da casa</h2></div><p><a href="?colecao=Ofertas">Ver ofertas</a> · <a href="?colecao=Todos">Ver catálogo completo</a></p></div>
 <div class="catalog-toolbar"><input class="search" id="search" placeholder="Buscar produto, marca ou categoria..."><select class="select" id="catalogCountry" aria-label="Filtrar por país"><option value="">Todos os países</option></select><select class="select" id="sort"><option value="default">Ordenar: recomendados</option><option value="low">Menor preço</option><option value="high">Maior preço</option><option value="name">Nome A–Z</option></select></div>
 <div class="chips" id="activeFilters"></div><div class="grid" id="productGrid"></div>
 <p class="catalog-disclaimer">Os itens e preços exibidos são os dados que puderam ser conferidos no cardápio público no momento da montagem. Estoque, unidade, preço promocional e condições precisam ser confirmados com a loja. Não exibimos preço “antes” sem uma referência promocional publicada e verificável.</p>
