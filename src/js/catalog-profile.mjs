@@ -1,3 +1,5 @@
+import { isAlcoholFreeWine } from './catalog-collections.mjs';
+
 export const BODY = {leve:'Leve', medio:'Médio', encorpado:'Encorpado'};
 export const STYLE = {seco:'Seco', suave:'Suave', doce:'Doce', espumante:'Espumante'};
 export const TYPE = {tinto:'Tinto', branco:'Branco', rose:'Rosé', espumante:'Espumante', sobremesa:'Sobremesa', fortificado:'Fortificado'};
@@ -15,8 +17,6 @@ export const BUDGET = {
   qualquer:{label:'Tanto faz', min:0, max:Infinity},
 };
 export const TASTE = {leve:'Leve', encorpado:'Encorpado', seco:'Seco', suave:'Suave ou adocicado', surpresa:'Surpreenda-me'};
-import { isAlcoholFreeWine } from './catalog-collections.mjs';
-
 export const PROFILE_FIELDS = 'tipo_vinho,corpo,estilo,harmoniza_com,ocasioes,produto_combina_ids,destaque_motivo,elegivel_kit,categoria_kit,uvas,regiao_vinho,safra,produtor,acidez,taninos,teor_alcoolico,aromas,sabor_resumo,temperatura_servico,potencial_guarda,madeira,amadurecimento,perfil_cliente,descricao_curta,descricao_longa,descricao_revisada';
 
 export const profileComplete = wine => Boolean(wine.tipo_vinho && wine.corpo && wine.estilo && wine.harmoniza_com?.length && wine.ocasioes?.length);
@@ -64,6 +64,18 @@ export function wineReason(hit, answers) {
   if(hit.food&&answers.food!=='nenhuma')matches.push('harmoniza com '+FOOD[answers.food].toLowerCase());
   if(hit.within&&answers.budget!=='qualquer')matches.push('dentro da faixa escolhida');
   return facts.join(', ').replace(/^./,c=>c.toUpperCase())+(matches.length?' · '+matches.join(' · '):'')+'.';
+}
+
+export function wineOverview(wine) {
+  const short = wine.descricao_curta?.trim();
+  const text = [short?.includes('|') ? '' : short, wine.descricao_longa, wine.sabor_resumo, wine.description]
+    .find(value => value?.trim())?.trim().replace(/\s+/g, ' ') || '';
+  if(text.length <= 220)return text;
+  const excerpt = text.slice(0, 219);
+  const sentenceEnd = excerpt.lastIndexOf('. ');
+  if(sentenceEnd >= 80)return excerpt.slice(0, sentenceEnd + 1);
+  const wordEnd = excerpt.lastIndexOf(' ');
+  return (wordEnd >= 80 ? excerpt.slice(0, wordEnd) : excerpt) + '…';
 }
 
 export function generateWineCopy(p) {

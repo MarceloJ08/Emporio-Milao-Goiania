@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {recommendWines,wineReason,eligibleStores,generateWineCopy,suggestWineFacts,hasOffensiveText} from '../src/js/catalog-profile.mjs';
+import {recommendWines,wineReason,wineOverview,eligibleStores,generateWineCopy,suggestWineFacts,hasOffensiveText} from '../src/js/catalog-profile.mjs';
 
 const stores=[{id:'ns',name:'Nova Suíça'},{id:'ag',name:'Alto da Glória'}];
 const red={id:'red',name:'Tinto de teste',tipo_vinho:'tinto',corpo:'encorpado',estilo:'seco',aromas:['ameixa'],ocasioes:['churrasco'],harmoniza_com:['carne'],price:129};
@@ -42,4 +42,16 @@ test('texto usa os campos preenchidos e a prévia recusa termos bloqueados',()=>
  assert.deepEqual(suggestWineFacts({description:'Toque leve de baunilha.'}),{});
  assert.equal(hasOffensiveText('Pô, que presente!'),false);
  assert.equal(hasOffensiveText('que porra'),true);
+});
+
+test('mostra o texto cadastrado de cada rótulo e mantém a harmonização ligada à escolha',()=>{
+ const tinto={...red,descricao_curta:'Frutado com notas de ameixa e final macio.'};
+ const branco={...white,descricao_curta:'Mendoza | Chardonnay',descricao_longa:'Branco fresco com notas cítricas.'};
+ assert.equal(wineOverview(tinto),'Frutado com notas de ameixa e final macio.');
+ assert.equal(wineOverview(branco),'Branco fresco com notas cítricas.');
+ assert.equal(wineOverview(red),'');
+ const answers={occasion:'churrasco',food:'carne',budget:'ate150',taste:'encorpado'};
+ const {results}=recommendWines([tinto,branco],catalog,answers);
+ assert.match(wineReason(results[0],answers),/harmoniza com carne/);
+ assert.doesNotMatch(wineReason(results[1],answers),/harmoniza com carne/);
 });

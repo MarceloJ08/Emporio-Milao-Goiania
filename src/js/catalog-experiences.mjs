@@ -1,5 +1,5 @@
 
-import {BODY,STYLE,TYPE,INTENSITY,FOOD,OCCASION,KIT_CATEGORY,GIFT_OCCASION,CARD_STYLE,BUDGET,TASTE,PROFILE_FIELDS,eligibleStores,totalAvailability,recommendWines,wineReason,money,safeHtml as h,hasOffensiveText} from './catalog-profile.mjs';
+import {BODY,STYLE,TYPE,INTENSITY,FOOD,OCCASION,KIT_CATEGORY,GIFT_OCCASION,CARD_STYLE,BUDGET,TASTE,PROFILE_FIELDS,eligibleStores,totalAvailability,recommendWines,wineReason,wineOverview,money,safeHtml as h,hasOffensiveText} from './catalog-profile.mjs';
 
 let client;
 let pageDialog;
@@ -83,9 +83,12 @@ export function openSommelier() {
       const companion=results.flatMap(({product})=>product.produto_combina_ids||[]).map(id=>data.products.find(p=>p.id===id)).find(p=>p&&/queijo|carne/i.test(p.category+' '+p.name)&&totalAvailability(data,p.id)>0);
       panel.innerHTML=`<h3 tabindex="-1">Nossa seleção para você</h3>
        ${selection.relaxed?'<p class="feature-note">Ampliei um pouco a busca para te mostrar boas opções.</p>':''}
-       ${results.length?'<div class="feature-wines">'+results.map(({product,availability,...hit},index)=>`<article class="feature-wine-card">${productImage(product)}<small>${['Primeira escolha','Outra opção','Seleção especial'][index]}</small><h4>${h(product.name)}</h4>
+       ${results.length?'<div class="feature-wines">'+results.map(({product,availability,...hit},index)=>`<article class="feature-wine-card">${productImage(product)}<small>${['Indicação da casa','Outra opção','Seleção especial'][index]}</small><h4>${h(product.name)}</h4>
          <p>${h([product.country,product.regiao_vinho].filter(Boolean).join(' · '))}</p>
-         <b>${money(product.price)}</b> ${availability<=3?'<span class="feature-note">Últimas unidades</span>':''}<p>${h(wineReason({product,...hit},answers))}</p>
+         <b>${money(product.price)}</b> ${availability<=3?'<span class="feature-note">Últimas unidades</span>':''}
+         ${wineOverview(product)?`<p>${h(wineOverview(product))}</p>`:''}
+         ${product.madeira?`<p><strong>Tempo em madeira</strong> · ${h(product.madeira)}</p>`:product.amadurecimento?`<p><strong>Amadurecimento</strong> · ${h(product.amadurecimento)}</p>`:''}
+         <p><strong>Por que indicamos</strong> · ${h(wineReason({product,...hit},answers))}</p>
          ${action('data-chosen',product.id,'Adicionar à sacola',true)} ${action('data-wine',product.id,'Ver detalhes')}</article>`).join('')+'</div>':'<p>Nenhum vinho com ficha e estoque confirmado atende a essa busca. Nossa equipe pode ajudar na escolha.</p>'}
        ${companion?`<aside class="feature-companion"><b>Quer completar?</b> <span>${h(companion.name)} · ${money(companion.price)}</span> ${action('data-companion',companion.id,'Adicionar à sacola')}</aside>`:''}
        ${results.length?`<form class="feature-question"><label>Uma dúvida sobre a ficha<select name="wine">${results.map(({product})=>`<option value="${h(product.id)}">${h(product.name)}</option>`).join('')}</select></label>
@@ -128,6 +131,8 @@ export function openSommelier() {
 
 function answerQuestion(product,text) {
   const q=text.normalize('NFD').replace(/\p{M}/gu,'').toLowerCase();
+  if(/madeira|barrica|carvalho/.test(q))return product.madeira||'';
+  if(/amadurec|envelhec/.test(q))return product.amadurecimento||product.madeira||'';
   if(/seco|suave|doc|adoci|estilo/.test(q)&&product.estilo)return 'O estilo cadastrado é '+STYLE[product.estilo].toLowerCase()+'.';
   if(/leve|corpo|encorpad/.test(q)&&product.corpo)return 'O vinho tem corpo '+BODY[product.corpo].toLowerCase()+'.';
   if(/tanino/.test(q)&&product.taninos)return 'Taninos de intensidade '+INTENSITY[product.taninos].toLowerCase()+'.';
