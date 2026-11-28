@@ -17,6 +17,15 @@ const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',ye
 const asArray=value=>Array.isArray(value)?value:[];
 const showDate=value=>String(value||'').split('-').reverse().join('/');
 
+export function giftProducts(catalog, category){
+  return catalog.products.filter(product=>product.elegivel_kit&&product.categoria_kit===category&&
+    product.price>0&&(category!=='vinho'||product.tipo_vinho)&&totalAvailability(catalog,product.id)>0);
+}
+
+export function canCompleteGift(catalog, selected, packages){
+  return packages.some(product=>eligibleStores(catalog,[...selected,product.id]).length>0);
+}
+
 export function giftCardCanvas(card){
   const canvas=document.createElement('canvas');canvas.width=1100;canvas.height=700;
   const ctx=canvas.getContext('2d');
@@ -46,30 +55,40 @@ export function downloadGiftCard(card){
 export async function openGiftExperience(api,existing=null){
   const {client,modal,action,productImage,getData}=api;
   const {dialog,panel}=modal('Monte seu Kit Presente','gift-dialog');
-  panel.innerHTML='<p role="status">Consultando os itens e as unidades…</p>';
-  let catalog,presets,settings,byId;
+  let catalog,presets,settings,byId,packages;
   let step=0,filter='',quote=null,loading=false;
   const state={occasion:'',wine:'',sides:[],extra:'',package:'',style:'classico',message:'',from:'',to:'',method:'delivery',address:'',date:'',store_id:'',preset:''};
-  const setupCatalog=async()=>{catalog=await getData();byId=new Map(catalog.products.map(p=>[p.id,p]));};
-  try{
-    const [offers,config]=await Promise.all([
-      client.supa.from('gift_kit_presets').select('id,name,product_ids,price').eq('active',true).order('price'),
-      client.supa.from('gift_kit_settings').select('deadline_date,deadline_label').maybeSingle(),
-      setupCatalog(),
-    ]);
-    if(offers.error||config.error)throw Error('Não foi possível carregar os kits e os prazos.');
-    presets=offers.data||[];settings=config.data;
-    if(!dialog.open)return;
-    if(existing){
-      const stored=existing.quote||existing;
-      for(const key of ['occasion','style','message','from','to','method','address','date','store_id','preset']){
-        if(stored[key]!=null)state[key]=stored[key];
+  const setupCatalog=async()=>{
+    catalog=await getData();
+    byId=new Map(catalog.products.map(p=>[p.id,p]));
+    packages=giftProducts(catalog,'embalagem');
+  };
+  async function start(){
+    panel.innerHTML='<p role="status">Consultando os itens e as unidades…</p>';
+    try{
+      const [offers,config]=await Promise.all([
+        client.supa.from('gift_kit_presets').select('id,name,product_ids,price').eq('active',true).order('price'),
+        client.supa.from('gift_kit_settings').select('deadline_date,deadline_label').maybeSingle(),
+        setupCatalog(),
+      ]);
+      if(offers.error||config.error)throw Error('Não foi possível carregar os kits e os prazos.');
+      presets=offers.data||[];settings=config.data;
+      if(!dialog.open)return;
+      if(existing){
+        const stored=existing.quote||existing;
+        for(const key of ['occasion','style','message','from','to','method','address','date','store_id','preset']){
+          if(stored[key]!=null)state[key]=stored[key];
+        }
+        loadProductIds(asArray(stored.ids));
+        step=1;
       }
-      loadProductIds(asArray(stored.ids));
-      step=1;
+      render();
+    }catch(error){
+      if(!dialog.open)return;
+      panel.innerHTML=`<p role="alert">${h(error.message)}</p>${action('data-gift-retry','load','Tentar novamente')}`;
+      panel.querySelector('button').onclick=start;
     }
-    render();
-  }catch(error){panel.innerHTML=`<p role="alert">${h(error.message)}</p>`;}
+  }
   function loadProductIds(ids){
     const products=ids.map(id=>byId.get(id)).filter(Boolean);
     state.wine=products.find(p=>p.categoria_kit==='vinho')?.id||'';
@@ -96,14 +115,16 @@ export async function openGiftExperience(api,existing=null){
   }
   const categoryAtStep={1:['vinho'],2:['queijo','petisco'],3:['acessorio','doce'],4:['embalagem']};
   function candidates(){
-    const chosen=idsOf(state);
-    const available=catalog.products.filter(p=>p.elegivel_kit&&categoryAtStep[step].includes(p.categoria_kit)&&p.price>0&&totalAvailability(catalog,p.id)>0);
+    const chosen=idsOf(state).filter(id=>!categoryAtStep[step].includes(byId.get(id)?.categoria_kit));
+    const available=categoryAtStep[step].flatMap(category=>giftProducts(catalog,category));
     const max=Number(filter)||Infinity;
     const pair=byId.get(state.wine)?.produto_combina_ids||[];
     return available.filter(p=>{
       if(step===1&&p.price>max)return false;
-      const other=chosen.filter(id=>!categoryAtStep[step].includes(byId.get(id)?.categoria_kit));
-      return eligibleStores(catalog,[...other,p.id]).length>0;
+      const keptSides=step===2&&!state.sides.includes(p.id)?state.sides.slice(-1):[];
+      const selected=[...chosen,...keptSides,p.id];
+      return step===4?eligibleStores(catalog,selected).length>0:
+        canCompleteGift(catalog,selected.filter(id=>id!==state.package),packages);
     }).sort((a,b)=>{
       const weight=p=>step===1?Number(p.ocasioes?.includes(occasionKey[state.occasion])):Number(pair.includes(p.id));
       return weight(b)-weight(a)||a.price-b.price;
@@ -111,7 +132,17 @@ export async function openGiftExperience(api,existing=null){
   }
   function optionRows(){
     const list=candidates();
-    if(!list.length)return '<p class="feature-note">Nenhum produto disponível para esta etapa com o estoque confirmado.</p>';
+    if(!list.length){
+      if(step===2||step===3)return '<p class="feature-note">Nenhum complemento disponível para esta combinação. Você pode continuar sem ele.</p>';
+      if(step===1&&filter)return `<p class="feature-note">Nenhum vinho para kit disponível com esse limite.</p>${action('data-gift-action','clear-filter','Mostrar todos os preços')}`;
+      const occasion=GIFT_OCCASION[state.occasion];
+      const message=occasion?'Olá! Gostaria de consultar um kit presente para a ocasião '+occasion+'.':'Olá! Gostaria de consultar as opções de kit presente.';
+      const note=step===1?'A montagem online está indisponível. O vinho e a embalagem precisam estar disponíveis na mesma unidade.':'Nenhuma embalagem está disponível na mesma unidade dos itens selecionados.';
+      return `<p class="feature-note">${h(note)}</p><div class="feature-actions">
+        ${action('data-gift-action','refresh-stock','Atualizar disponibilidade')}
+        <a class="feature-button feature-primary" href="${h(client.waLink(message))}" target="_blank" rel="noopener">Consultar kits no WhatsApp</a>
+      </div>`;
+    }
     const chosen=idsOf(state);
     const pairs=byId.get(state.wine)?.produto_combina_ids||[];
     return list.map(p=>`<button type="button" class="gift-choice" data-gift-product="${h(p.id)}" aria-pressed="${chosen.includes(p.id)}">
@@ -151,6 +182,7 @@ export async function openGiftExperience(api,existing=null){
      <p class="gift-error" role="alert"></p>
      <div class="gift-total"><div><small>Total ${step<7?'estimado':''}</small><strong>${money(quote?.price||subtotal())}</strong></div><div class="feature-actions">${step?action('data-gift-action','back','Voltar'):''}${action('data-gift-action',step===7?'add':'next',step===7?'Adicionar kit à sacola':'Continuar',true)}</div></div>`;
     cardPreview();
+    if((step===1||step===4)&&!candidates().length)panel.querySelector('[data-gift-action="next"]').disabled=true;
     panel.querySelectorAll('[data-gift-product]').forEach(b=>b.onclick=()=>choose(b.dataset.giftProduct));
     panel.querySelectorAll('[data-gift-preset]').forEach(button=>button.onclick=()=>{
       const p=presets.find(x=>x.id===button.dataset.giftPreset);
@@ -178,6 +210,16 @@ export async function openGiftExperience(api,existing=null){
   }
   async function handle(command){
     if(loading)return;
+    if(command==='clear-filter'){filter='';render();return;}
+    if(command==='refresh-stock'){
+      loading=true;
+      const button=panel.querySelector('[data-gift-action="refresh-stock"]');
+      if(button)button.disabled=true;
+      try{await setupCatalog();render();}
+      catch{showError('Não foi possível atualizar a disponibilidade. Tente novamente.');if(button)button.disabled=false;}
+      finally{loading=false;}
+      return;
+    }
     if(command==='back'){step--;quote=null;render();return;}
     if(command==='download'){
       if(hasOffensiveText([state.message,state.from,state.to].join(' '))){showError('Revise o texto do cartão.');return;}
@@ -210,7 +252,7 @@ export async function openGiftExperience(api,existing=null){
       dialog.close();client.openCart();
     } catch(error){
       if(!dialog.open)return;
-      if(/esgotou|indispon|unidade tem/i.test(error.message)){
+      if(/esgotou|indispon|unidade tem|unidade que tenha|revise os itens/i.test(error.message)){
         try{
           await setupCatalog();
           if(catalog&&idsOf(state).length&&!eligibleStores(catalog,idsOf(state)).length){
@@ -224,6 +266,11 @@ export async function openGiftExperience(api,existing=null){
             showError('O estoque mudou. Escolha um substituto entre os itens disponíveis.');
             return;
           }
+          if(state.method==='pickup'&&!eligibleStores(catalog,idsOf(state)).some(store=>store.id===state.store_id)){
+            state.store_id='';quote=null;step=6;render();
+            showError('A unidade selecionada ficou indisponível. Escolha outra unidade.');
+            return;
+          }
         }catch{}
       }
       showError(error.message);
@@ -231,4 +278,5 @@ export async function openGiftExperience(api,existing=null){
       loading=false;panel.querySelector('.gift-total')?.removeAttribute('aria-busy');
     }
   }
+  await start();
 }

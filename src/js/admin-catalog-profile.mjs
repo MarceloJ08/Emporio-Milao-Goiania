@@ -1,5 +1,6 @@
 
 import {BODY,STYLE,TYPE,INTENSITY,FOOD,OCCASION,KIT_CATEGORY,GIFT_OCCASION,BUDGET,safeHtml as h,money,profileComplete,generateWineCopy,suggestWineFacts} from './catalog-profile.mjs';
+import {canCompleteGift,giftProducts} from './gift-experience.mjs';
 
 const selects={tipo_vinho:['Tipo',TYPE],corpo:['Corpo',BODY],estilo:['Estilo',STYLE],acidez:['Acidez',INTENSITY],taninos:['Taninos',INTENSITY],categoria_kit:['Categoria do kit',KIT_CATEGORY]};
 const texts={regiao_vinho:'Região',produtor:'Produtor',safra:'Safra',teor_alcoolico:'Teor alcoólico (%)',temperatura_servico:'Temperatura de serviço',potencial_guarda:'Potencial de guarda',madeira:'Tempo e tipo de madeira',amadurecimento:'Outros detalhes do amadurecimento',destaque_motivo:'Motivo de destaque',sabor_resumo:'Sensação na boca',perfil_cliente:'Quem costuma gostar',descricao_curta:'Descrição curta'};
@@ -159,21 +160,32 @@ export function mountCatalogAdmin({supa,productRows,orders,areas,content,toast,r
   async function renderGifts(){
     const area=areas.gifts;
     area.innerHTML='<section class="admin-section"><h2>Kits Presente</h2><p role="status">Carregando embalagens, kits e pedidos…</p></section>';
-    const [presets,settings,giftOrders]=await Promise.all([
+    const [presets,settings,giftOrders,availability]=await Promise.all([
       supa.from('gift_kit_presets').select('*').order('id'),
       supa.from('gift_kit_settings').select('*').maybeSingle(),
       supa.from('orders').select('id,status,payment_status,gift_kits,created_at').neq('gift_kits','[]').order('created_at',{ascending:false}).limit(1000),
+      supa.rpc('catalog_profile_availability'),
     ]);
     if(!area.isConnected)return;
     if(presets.error||settings.error){area.querySelector('p').textContent='Não foi possível consultar os kits.';return;}
     const packages=productRows.filter(p=>p.categoria_kit==='embalagem');
     const eligible=productRows.filter(p=>p.elegivel_kit&&p.active);
+    const catalog={products:eligible,...availability.data};
+    const eligibleWines=eligible.filter(p=>p.categoria_kit==='vinho'&&p.tipo_vinho);
+    const stockedPackages=availability.error?[]:giftProducts(catalog,'embalagem');
+    const ready=availability.error?false:giftProducts(catalog,'vinho').some(wine=>canCompleteGift(catalog,[wine.id],stockedPackages));
+    const setupNote=availability.error?'Não foi possível consultar a disponibilidade.':
+      ready?'A montagem online tem vinho e embalagem com saldo na mesma unidade.':
+      !eligibleWines.length?'Marque ao menos um produto como elegível ao kit, na categoria Vinho, e preencha o tipo de vinho.':
+      !packages.some(p=>p.active&&p.elegivel_kit)?'Cadastre uma embalagem abaixo.':
+      'Registre saldo de um vinho e de uma embalagem na mesma unidade em Galpão e estoques.';
     const list=(giftOrders.error?orders:giftOrders.data||[]).flatMap(o=>(o.gift_kits||[]).map(kit=>({order:o,kit})));
     const valid=list.filter(({order})=>order.status!=='cancelled'&&order.payment_status==='paid');
     const counts=new Map();
     for(const {kit} of valid)counts.set(kit.occasion,(counts.get(kit.occasion)||0)+1);
     const average=valid.length?valid.reduce((sum,{kit})=>sum+Number(kit.price),0)/valid.length:0;
     area.innerHTML=`<section class="admin-section"><h2>Embalagens</h2>
+      <p role="status"><strong>Montagem online.</strong> ${h(setupNote)}</p>
       <form class="admin-form" id="giftPackageForm"><div class="admin-form-grid">
       <label>Cadastro<select name="id"><option value="">Nova embalagem</option>${packages.map(p=>`<option value="${h(p.id)}">${h(p.name)}</option>`).join('')}</select></label>
       <label>Nome<input name="name" required maxlength="100" placeholder="Ex.: Caixa clássica"></label>
